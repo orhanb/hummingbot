@@ -10,7 +10,7 @@ from hummingbot.core.utils.tracking_nonce import get_tracking_nonce
 
 
 CENTRALIZED = True
-EXAMPLE_PAIR = "BTC-USDT"
+EXAMPLE_PAIR = "BTCUSDT"
 DEFAULT_FEES = [0.05, 0.09]
 
 
