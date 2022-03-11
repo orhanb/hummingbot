@@ -59,6 +59,20 @@ def private_rest_url(path_url: str) -> str:
     return CONSTANTS.REST_URL + CONSTANTS.PRIVATE_API_VERSION + path_url
 
 
+def convert_from_exchange_trading_pair(pair: str) -> str:
+    if pair[-4:] == "USDT":
+        base, quote = pair[:-4], pair[-4:]
+    elif pair[-3:] == "TRY":
+        base, quote = pair[:-3], pair[-3:]
+    else:
+        return None
+    return f"{base}-{quote}".upper()
+
+
+def convert_to_exchange_trading_pair(hb_trading_pair: str) -> str:
+    return hb_trading_pair.replace("-", "")
+
+
 KEYS = {
     "btcturk_api_key": ConfigVar(
         key="btcturk_api_key",
