@@ -1024,7 +1024,7 @@ class BtcturkExchange(ExchangeBase):
 
             if response.status != 200:
                 data = await response.text()
-                raise IOError(f"Error fetching data from {url}. HTTP status is {response.status} ({data}) {headers}.")
+                raise IOError(f"Error fetching data from {url}. HTTP status is {response.status} ({data}) {request}.")
             try:
                 parsed_response = await response.json()
             except Exception:

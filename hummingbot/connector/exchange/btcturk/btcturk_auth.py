@@ -59,11 +59,11 @@ class BtcturkAuth(AuthBase):
         data = "{}{}".format(apiKey, stamp).encode("utf-8")
         signature = hmac.new(apiSecret, data, hashlib.sha256).digest()
         signature = base64.b64encode(signature)
-
+        signature = signature.decode("utf-8")
         return {
             "X-PCK": apiKey,
             "X-Stamp": stamp,
-            "X-Signature": bytes(signature),
+            "X-Signature": signature,
             "Content-Type": "application/json",
         }
 
