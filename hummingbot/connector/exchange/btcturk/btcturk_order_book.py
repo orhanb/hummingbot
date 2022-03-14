@@ -1,11 +1,11 @@
-from typing import Dict, Optional
-
-from hummingbot.core.event.events import TradeType
+from typing import Dict, Optional, List
 from hummingbot.core.data_type.order_book import OrderBook
 from hummingbot.core.data_type.order_book_message import (
     OrderBookMessage,
     OrderBookMessageType
 )
+from hummingbot.connector.exchange.btcturk.btcturk_orderbook_message import BtcturkOrderBookMessage
+from hummingbot.connector.exchange.btcturk.btcturk_constants import EXCHANGE_NAME
 
 
 class BtcturkOrderBook(OrderBook):
@@ -14,7 +14,7 @@ class BtcturkOrderBook(OrderBook):
     def snapshot_message_from_exchange(cls,
                                        msg: Dict[str, any],
                                        timestamp: float,
-                                       metadata: Optional[Dict] = None) -> OrderBookMessage:
+                                       metadata: Optional[Dict] = None) -> BtcturkOrderBookMessage:
         """
         Creates a snapshot message with the order book snapshot message
         :param msg: the response from the exchange when requesting the order book snapshot
@@ -24,18 +24,17 @@ class BtcturkOrderBook(OrderBook):
         """
         if metadata:
             msg.update(metadata)
-        return OrderBookMessage(OrderBookMessageType.SNAPSHOT, {
-            "trading_pair": msg["trading_pair"],
-            "update_id": msg["lastUpdateId"],
-            "bids": msg["bids"],
-            "asks": msg["asks"]
-        }, timestamp=timestamp)
+        return BtcturkOrderBookMessage(
+            message_type=OrderBookMessageType.SNAPSHOT,
+            content=msg,
+            timestamp=timestamp
+        )
 
     @classmethod
     def diff_message_from_exchange(cls,
                                    msg: Dict[str, any],
                                    timestamp: Optional[float] = None,
-                                   metadata: Optional[Dict] = None) -> OrderBookMessage:
+                                   metadata: Optional[Dict] = None) -> BtcturkOrderBookMessage:
         """
         Creates a diff message with the changes in the order book received from the exchange
         :param msg: the changes in the order book
@@ -45,13 +44,11 @@ class BtcturkOrderBook(OrderBook):
         """
         if metadata:
             msg.update(metadata)
-        return OrderBookMessage(OrderBookMessageType.DIFF, {
-            "trading_pair": msg["trading_pair"],
-            "first_update_id": msg["U"],
-            "update_id": msg["u"],
-            "bids": msg["b"],
-            "asks": msg["a"]
-        }, timestamp=timestamp)
+        return BtcturkOrderBookMessage(
+            message_type=OrderBookMessageType.DIFF,
+            content=msg,
+            timestamp=timestamp
+        )
 
     @classmethod
     def trade_message_from_exchange(cls, msg: Dict[str, any], metadata: Optional[Dict] = None):
@@ -63,12 +60,23 @@ class BtcturkOrderBook(OrderBook):
         """
         if metadata:
             msg.update(metadata)
-        ts = msg["E"]
-        return OrderBookMessage(OrderBookMessageType.TRADE, {
-            "trading_pair": msg["trading_pair"],
-            "trade_type": float(TradeType.SELL.value) if msg["m"] else float(TradeType.BUY.value),
-            "trade_id": msg["t"],
-            "update_id": ts,
-            "price": msg["p"],
-            "amount": msg["q"]
-        }, timestamp=ts * 1e-3)
+
+        msg.update({
+            "exchange_order_id": msg.get("I"),
+            "price": msg.get("P"),
+            "amount": msg.get("A")
+        })
+        timestamp = msg["D"]
+        return BtcturkOrderBookMessage(
+            message_type=OrderBookMessageType.TRADE,
+            content=msg,
+            timestamp=timestamp
+        )
+
+    @classmethod
+    def from_snapshot(cls, snapshot: OrderBookMessage):
+        raise NotImplementedError(EXCHANGE_NAME + " order book needs to retain individual order data.")
+
+    @classmethod
+    def restore_from_snapshot_and_diffs(self, snapshot: OrderBookMessage, diffs: List[OrderBookMessage]):
+        raise NotImplementedError(EXCHANGE_NAME + " order book needs to retain individual order data.")
