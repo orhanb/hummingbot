@@ -44,11 +44,7 @@ class BtcturkOrderBookMessage(OrderBookMessage):
 
     @property
     def trading_pair(self) -> str:
-        if "trading_pair" in self.content:
-            return self.content["trading_pair"]
-        elif "instrument_name" in self.content:
-            return self.content["instrument_name"]
-        elif "PS" in self.content:
+        if "PS" in self.content:
             return self.content["PS"]
         else:
             return -1
