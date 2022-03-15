@@ -53,19 +53,10 @@ class BtcturkOrderBookMessage(OrderBookMessage):
         else:
             return -1
 
-    """
-    {'CS': 7257210,
-    'PS': 'AVAXUSDT',
-    'AO': [{'A': '994.781', 'P': '68.25'},
-    {'A': '5.779', 'P': '68.28'}],
-    'BO': [{'A': 2, 'P': '68.00},
-    {'A': 3, 'P': '67.90}]}
-    """
-
     @property
     def asks(self) -> List[OrderBookRow]:
         results = [
-            OrderBookRow(float(entry[0]["P"]), float(entry[1]["A"]), self.update_id)
+            OrderBookRow(float(entry["P"]), float(entry["A"]), self.update_id)
             for entry in self.content["AO"]
         ]
         sorted(results, key=lambda a: a.price)
@@ -74,7 +65,7 @@ class BtcturkOrderBookMessage(OrderBookMessage):
     @property
     def bids(self) -> List[OrderBookRow]:
         results = [
-            OrderBookRow(float(entry[0]["P"]), float(entry[1]["A"]), self.update_id)
+            OrderBookRow(float(entry["P"]), float(entry["A"]), self.update_id)
             for entry in self.content["BO"]
         ]
         sorted(results, key=lambda b: b.price)
