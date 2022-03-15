@@ -9,7 +9,7 @@ from typing import (
     Optional
 )
 
-from hummingbot.connector.exchange.binance.binance_api_order_book_data_source import BinanceAPIOrderBookDataSource
+from hummingbot.connector.exchange.btcturk.btcturk_api_order_book_data_source import BtcturkAPIOrderBookDataSource
 from hummingbot.core.api_throttler.async_throttler import AsyncThrottler
 from hummingbot.core.data_type.order_book import OrderBook
 from hummingbot.core.data_type.order_book_message import OrderBookMessage, OrderBookMessageType
@@ -19,7 +19,7 @@ from hummingbot.core.web_assistant.web_assistants_factory import WebAssistantsFa
 from hummingbot.logger import HummingbotLogger
 
 
-class BinanceOrderBookTracker(OrderBookTracker):
+class BtcturkOrderBookTracker(OrderBookTracker):
     _logger: Optional[HummingbotLogger] = None
 
     def __init__(self,
@@ -28,7 +28,7 @@ class BinanceOrderBookTracker(OrderBookTracker):
                  api_factory: Optional[WebAssistantsFactory] = None,
                  throttler: Optional[AsyncThrottler] = None):
         super().__init__(
-            data_source=BinanceAPIOrderBookDataSource(
+            data_source=BtcturkAPIOrderBookDataSource(
                 trading_pairs=trading_pairs,
                 domain=domain,
                 api_factory=api_factory,
