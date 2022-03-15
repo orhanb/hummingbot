@@ -24,22 +24,18 @@ class BtcturkOrderBookTracker(OrderBookTracker):
 
     def __init__(self,
                  trading_pairs: Optional[List[str]] = None,
-                 domain: str = "com",
                  api_factory: Optional[WebAssistantsFactory] = None,
                  throttler: Optional[AsyncThrottler] = None):
         super().__init__(
             data_source=BtcturkAPIOrderBookDataSource(
                 trading_pairs=trading_pairs,
-                domain=domain,
                 api_factory=api_factory,
                 throttler=throttler),
-            trading_pairs=trading_pairs,
-            domain=domain
+            trading_pairs=trading_pairs
         )
         self._order_book_diff_stream: asyncio.Queue = asyncio.Queue()
         self._order_book_snapshot_stream: asyncio.Queue = asyncio.Queue()
         self._ev_loop: asyncio.BaseEventLoop = asyncio.get_event_loop()
-        self._domain = domain
         self._saved_message_queues: Dict[str, Deque[OrderBookMessage]] = defaultdict(lambda: deque(maxlen=1000))
 
         self._order_book_stream_listener_task: Optional[asyncio.Task] = None
@@ -92,7 +88,6 @@ class BtcturkOrderBookTracker(OrderBookTracker):
                 message_queue: asyncio.Queue = self._tracking_message_queues[trading_pair]
                 # Check the order book's initial update ID. If it's larger, don't bother.
                 order_book: OrderBook = self._order_books[trading_pair]
-
                 if order_book.snapshot_uid > ob_message.update_id:
                     messages_rejected += 1
                     continue
