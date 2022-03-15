@@ -27,7 +27,7 @@ class BtcturkOrderBook(OrderBook):
         return BtcturkOrderBookMessage(
             message_type=OrderBookMessageType.SNAPSHOT,
             content=msg,
-            timestamp=timestamp
+            timestamp=None
         )
 
     @classmethod
@@ -47,7 +47,7 @@ class BtcturkOrderBook(OrderBook):
         return BtcturkOrderBookMessage(
             message_type=OrderBookMessageType.DIFF,
             content=msg,
-            timestamp=timestamp
+            timestamp=None
         )
 
     @classmethod

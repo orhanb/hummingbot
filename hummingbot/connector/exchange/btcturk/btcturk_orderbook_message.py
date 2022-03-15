@@ -21,8 +21,8 @@ class BtcturkOrderBookMessage(OrderBookMessage):
         **kwargs,
     ):
         if timestamp is None:
-            if message_type is OrderBookMessageType.SNAPSHOT:
-                raise ValueError("timestamp must not be None when initializing snapshot messages.")
+            # if message_type is OrderBookMessageType.SNAPSHOT:
+            #     raise ValueError("timestamp must not be None when initializing snapshot messages.")
             timestamp = content["CS"]
 
         return super(BtcturkOrderBookMessage, cls).__new__(
@@ -65,7 +65,7 @@ class BtcturkOrderBookMessage(OrderBookMessage):
     @property
     def asks(self) -> List[OrderBookRow]:
         results = [
-            OrderBookRow(float(entry[0]["P"]), float(entry[1]["A"]), self.update_id)
+            OrderBookRow(float(entry["P"]), float(entry["A"]), self.update_id)
             for entry in self.content["AO"]
         ]
         sorted(results, key=lambda a: a.price)
@@ -74,7 +74,7 @@ class BtcturkOrderBookMessage(OrderBookMessage):
     @property
     def bids(self) -> List[OrderBookRow]:
         results = [
-            OrderBookRow(float(entry[0]["P"]), float(entry[1]["A"]), self.update_id)
+            OrderBookRow(float(entry["P"]), float(entry["A"]), self.update_id)
             for entry in self.content["BO"]
         ]
         sorted(results, key=lambda b: b.price)
