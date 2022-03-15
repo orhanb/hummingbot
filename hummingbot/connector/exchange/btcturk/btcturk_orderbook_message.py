@@ -9,6 +9,7 @@ from hummingbot.core.data_type.order_book_message import (
     OrderBookMessage,
     OrderBookMessageType,
 )
+from hummingbot.connector.exchange.btcturk.btcturk_utils import convert_from_exchange_trading_pair
 
 
 class BtcturkOrderBookMessage(OrderBookMessage):
@@ -21,10 +22,9 @@ class BtcturkOrderBookMessage(OrderBookMessage):
         **kwargs,
     ):
         if timestamp is None:
-            # if message_type is OrderBookMessageType.SNAPSHOT:
-            #     raise ValueError("timestamp must not be None when initializing snapshot messages.")
-            timestamp = content["CS"]
-
+            if message_type is OrderBookMessageType.SNAPSHOT:
+                raise ValueError("timestamp must not be None when initializing snapshot messages.")
+            timestamp = float(content["CS"])
         return super(BtcturkOrderBookMessage, cls).__new__(
             cls, message_type, content, timestamp=timestamp, *args, **kwargs
         )
@@ -32,20 +32,24 @@ class BtcturkOrderBookMessage(OrderBookMessage):
     @property
     def update_id(self) -> int:
         if self.type in [OrderBookMessageType.DIFF, OrderBookMessageType.SNAPSHOT]:
-            return int(self.timestamp)
-        else:
-            return -1
+            change_set = self.content["CS"]
+            return int(change_set)
+        # Binance example is like below in TestDocument
+        # elif self.type == OrderBookMessageType.TRADE:
+        #     return int(self.content["D"])
+        return -1
 
     @property
     def trade_id(self) -> int:
         if self.type is OrderBookMessageType.TRADE:
-            return int(self.timestamp)
+            return int(self.content["I"])
         return -1
 
     @property
     def trading_pair(self) -> str:
         if "PS" in self.content:
-            return self.content["PS"]
+            hb_trading_pair = convert_from_exchange_trading_pair(self.content["PS"])
+            return hb_trading_pair
         else:
             return -1
 

@@ -12,7 +12,7 @@ class BtcturkOrderBook(OrderBook):
 
     @classmethod
     def snapshot_message_from_exchange(cls,
-                                       msg: Dict[str, any],
+                                       msg: List[any],
                                        timestamp: float,
                                        metadata: Optional[Dict] = None) -> BtcturkOrderBookMessage:
         """
@@ -23,16 +23,16 @@ class BtcturkOrderBook(OrderBook):
         :return: a snapshot message with the snapshot information received from the exchange
         """
         if metadata:
-            msg.update(metadata)
+            msg[1].update(metadata)
         return BtcturkOrderBookMessage(
             message_type=OrderBookMessageType.SNAPSHOT,
-            content=msg,
-            timestamp=None
+            content=msg[1],
+            timestamp=timestamp
         )
 
     @classmethod
     def diff_message_from_exchange(cls,
-                                   msg: Dict[str, any],
+                                   msg: List[any],
                                    timestamp: Optional[float] = None,
                                    metadata: Optional[Dict] = None) -> BtcturkOrderBookMessage:
         """
@@ -43,15 +43,17 @@ class BtcturkOrderBook(OrderBook):
         :return: a diff message with the changes in the order book notified by the exchange
         """
         if metadata:
-            msg.update(metadata)
+            msg[1].update(metadata)
         return BtcturkOrderBookMessage(
             message_type=OrderBookMessageType.DIFF,
-            content=msg,
-            timestamp=None
+            content=msg[1],
+            timestamp=timestamp
         )
 
     @classmethod
-    def trade_message_from_exchange(cls, msg: Dict[str, any], metadata: Optional[Dict] = None):
+    def trade_message_from_exchange(cls,
+                                    msg: List[any],
+                                    metadata: Optional[Dict] = None) -> BtcturkOrderBookMessage:
         """
         Creates a trade message with the information from the trade event sent by the exchange
         :param msg: the trade event details sent by the exchange
@@ -59,17 +61,15 @@ class BtcturkOrderBook(OrderBook):
         :return: a trade message with the details of the trade as provided by the exchange
         """
         if metadata:
-            msg.update(metadata)
-
-        msg.update({
-            "exchange_order_id": msg.get("I"),
-            "price": msg.get("P"),
-            "amount": msg.get("A")
+            msg[1].update(metadata)
+        msg[1].update({
+            "price": msg[1].get("P"),
+            "amount": msg[1].get("A"),
         })
-        timestamp = msg["D"]
+        timestamp = float(msg[1]["D"]) * (1e-3)
         return BtcturkOrderBookMessage(
             message_type=OrderBookMessageType.TRADE,
-            content=msg,
+            content=msg[1],
             timestamp=timestamp
         )
 
