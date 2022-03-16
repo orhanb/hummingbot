@@ -15,7 +15,7 @@ PUBLIC_API_VERSION = "v2"
 PRIVATE_API_VERSION = "v1"
 
 # Public API endpoints
-TICKER_PRICE_CHANGE_PATH_URL = "/ticker/currency"
+TICKER_PRICE_CHANGE_PATH_URL = "/ticker"
 EXCHANGE_INFO_PATH_URL = "/server/exchangeInfo"
 # PING_PATH_URL = "/ping"
 # SNAPSHOT_PATH_URL = "/depth"

@@ -33,7 +33,7 @@ from hummingbot.core.web_assistant.connections.data_types import (
 from hummingbot.core.web_assistant.rest_assistant import RESTAssistant
 from hummingbot.core.web_assistant.web_assistants_factory import WebAssistantsFactory
 from hummingbot.core.web_assistant.ws_assistant import WSAssistant
-from hummingbot.connector.exchange import btcturk
+# from hummingbot.connector.exchange import btcturk
 from hummingbot.logger import HummingbotLogger
 
 
@@ -430,24 +430,22 @@ class BtcturkAPIOrderBookDataSource(OrderBookTrackerDataSource):
     @classmethod
     async def _get_last_traded_price(cls,
                                      trading_pair: str,
-                                     domain: str,
                                      rest_assistant: RESTAssistant,
                                      throttler: AsyncThrottler) -> float:
 
-        url = btcturk.public_rest_url(path_url=CONSTANTS.TICKER_PRICE_CHANGE_PATH_URL, domain=domain)
+        url = btcturk_utils.public_rest_url(path_url=CONSTANTS.TICKER_PRICE_CHANGE_PATH_URL)
         symbol = await cls.exchange_symbol_associated_to_pair(
             trading_pair=trading_pair,
-            domain=domain,
             throttler=throttler)
         request = RESTRequest(
             method=RESTMethod.GET,
-            url=f"{url}?symbol={symbol}")
+            url=f"{url}?pairSymbol={symbol}")
 
         async with throttler.execute_task(limit_id=CONSTANTS.TICKER_PRICE_CHANGE_PATH_URL):
             resp: RESTResponse = await rest_assistant.call(request=request)
             if resp.status == 200:
                 resp_json = await resp.json()
-                return float(resp_json["lastPrice"])
+                return float(resp_json["data"][0].get("last", None))
 
     @classmethod
     async def _init_trading_pair_symbols(

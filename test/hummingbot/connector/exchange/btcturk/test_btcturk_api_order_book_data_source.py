@@ -1,6 +1,6 @@
 import asyncio
 import json
-# import re
+import re
 import unittest
 
 from typing import (
@@ -131,45 +131,48 @@ class BtcturkAPIOrderBookDataSourceUnitTests(unittest.TestCase):
     #     }
     #     return resp
 
-    # @aioresponses()
-    # def test_get_last_trade_prices(self, mock_api):
-    #     url = utils.public_rest_url(path_url=CONSTANTS.TICKER_PRICE_CHANGE_PATH_URL, domain=self.domain)
-    #     url = f"{url}?symbol={self.base_asset}{self.quote_asset}"
-    #     regex_url = re.compile(f"^{url}".replace(".", r"\.").replace("?", r"\?"))
+    @aioresponses()
+    def test_get_last_trade_prices(self, mock_api):
+        url = utils.public_rest_url(path_url=CONSTANTS.TICKER_PRICE_CHANGE_PATH_URL)
+        url = f"{url}?pairSymbol={self.base_asset}{self.quote_asset}"
+        regex_url = re.compile(f"^{url}".replace(".", r"\.").replace("?", r"\?"))
+        null = ''
+        true = True
+        mock_response = {
+            "data": [
+                        {
+                            "pair": "BTCUSDT",
+                            "pairNormalized": "BTC_USDT",
+                            "timestamp": 1647430954506,
+                            "last": 40585,
+                            "high": 41689,
+                            "low": 38512,
+                            "bid": 40569,
+                            "ask": 40587,
+                            "open": 38699,
+                            "volume": 170.06575796,
+                            "average": 39986,
+                            "daily": 1888,
+                            "dailyPercent": 4.87,
+                            "denominatorSymbol": "USDT",
+                            "numeratorSymbol": "BTC",
+                            "order": 2000
+                        }
+            ],
+            "success": true,
+            "message": null,
+            "code": 0
+        }
 
-    #     mock_response = {
-    #         "symbol": "BNBBTC",
-    #         "priceChange": "-94.99999800",
-    #         "priceChangePercent": "-95.960",
-    #         "weightedAvgPrice": "0.29628482",
-    #         "prevClosePrice": "0.10002000",
-    #         "lastPrice": "100.0",
-    #         "lastQty": "200.00000000",
-    #         "bidPrice": "4.00000000",
-    #         "bidQty": "100.00000000",
-    #         "askPrice": "4.00000200",
-    #         "askQty": "100.00000000",
-    #         "openPrice": "99.00000000",
-    #         "highPrice": "100.00000000",
-    #         "lowPrice": "0.10000000",
-    #         "volume": "8913.30000000",
-    #         "quoteVolume": "15.30000000",
-    #         "openTime": 1499783499040,
-    #         "closeTime": 1499869899040,
-    #         "firstId": 28385,
-    #         "lastId": 28460,
-    #         "count": 76,
-    #     }
+        mock_api.get(regex_url, body=json.dumps(mock_response))
 
-    #     mock_api.get(regex_url, body=json.dumps(mock_response))
+        result: Dict[str, float] = self.async_run_with_timeout(
+            self.data_source.get_last_traded_prices(trading_pairs=[self.trading_pair],
+                                                    throttler=self.throttler)
+        )
 
-    #     result: Dict[str, float] = self.async_run_with_timeout(
-    #         self.data_source.get_last_traded_prices(trading_pairs=[self.trading_pair],
-    #                                                 throttler=self.throttler)
-    #     )
-
-    #     self.assertEqual(1, len(result))
-    #     self.assertEqual(100, result[self.trading_pair])
+        self.assertEqual(1, len(result))
+        self.assertEqual(40585, result[self.trading_pair])
 
     # @aioresponses()
     # def test_get_all_mid_prices(self, mock_api):
