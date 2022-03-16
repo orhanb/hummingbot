@@ -174,33 +174,81 @@ class BtcturkAPIOrderBookDataSourceUnitTests(unittest.TestCase):
         self.assertEqual(1, len(result))
         self.assertEqual(40585, result[self.trading_pair])
 
-    # @aioresponses()
-    # def test_get_all_mid_prices(self, mock_api):
-    #     url = utils.public_rest_url(path_url=CONSTANTS.TICKER_PRICE_CHANGE_PATH_URL, domain=self.domain)
+    @aioresponses()
+    def test_get_all_mid_prices(self, mock_api):
+        url = utils.public_rest_url(path_url=CONSTANTS.TICKER_PRICE_CHANGE_PATH_URL)
+        null = ''
+        true = True
+        mock_response: Dict[str, Any] = {
+            "data": [
+                {
+                    "pair": "BTCTRY",
+                    "pairNormalized": "BTC_TRY",
+                    "timestamp": 1647432522115,
+                    "last": 596675.00,
+                    "high": 609386.00,
+                    "low": 565730.00,
+                    "bid": 99.00,
+                    "ask": 101.00,
+                    "open": 567200.00,
+                    "volume": 291.81199031,
+                    "average": 586557.36,
+                    "daily": 30096.00,
+                    "dailyPercent": 5.20,
+                    "denominatorSymbol": "TRY",
+                    "numeratorSymbol": "BTC",
+                    "order": 1000
+                },
+                {
+                    "pair": "ETHBTC",
+                    "pairNormalized": "ETH_BTC",
+                    "timestamp": 1647432480496,
+                    "last": 0.06620,
+                    "high": 0.06705,
+                    "low": 0.06545,
+                    "bid": 0.06613,
+                    "ask": 0.06647,
+                    "open": 0.06560,
+                    "volume": 14.99304261,
+                    "average": 0.06671,
+                    "daily": 0.00087,
+                    "dailyPercent": 0.91,
+                    "denominatorSymbol": "BTC",
+                    "numeratorSymbol": "ETH",
+                    "order": 3024
+                },
+                {
+                    "pair": "ETHTRY",
+                    "pairNormalized": "ETH_TRY",
+                    "timestamp": 1647432520065,
+                    "last": 39524.00,
+                    "high": 39950.00,
+                    "low": 37102.00,
+                    "bid": 39523.00,
+                    "ask": 39564.00,
+                    "open": 37206.00,
+                    "volume": 1837.35093099,
+                    "average": 38774.86,
+                    "daily": 2358.00,
+                    "dailyPercent": 6.23,
+                    "denominatorSymbol": "TRY",
+                    "numeratorSymbol": "ETH",
+                    "order": 1034
+                },
+            ],
+            "success": true,
+            "message": null,
+            "code": 0
+        }
 
-    #     mock_response: List[Dict[str, Any]] = [
-    #         {
-    #             # Truncated Response
-    #             "symbol": self.ex_trading_pair,
-    #             "bidPrice": "99",
-    #             "askPrice": "101",
-    #         },
-    #         {
-    #             # Truncated Response for unrecognized pair
-    #             "symbol": "BCCBTC",
-    #             "bidPrice": "99",
-    #             "askPrice": "101",
-    #         }
-    #     ]
+        mock_api.get(url, body=json.dumps(mock_response))
 
-    #     mock_api.get(url, body=json.dumps(mock_response))
+        result: Dict[str, float] = self.async_run_with_timeout(
+            self.data_source.get_all_mid_prices()
+        )
 
-    #     result: Dict[str, float] = self.async_run_with_timeout(
-    #         self.data_source.get_all_mid_prices()
-    #     )
-
-    #     self.assertEqual(1, len(result))
-    #     self.assertEqual(100, result[self.trading_pair])
+        self.assertEqual(1, len(result))
+        self.assertEqual(100, result[self.trading_pair])
 
     @aioresponses()
     def test_fetch_trading_pairs(self, mock_api):

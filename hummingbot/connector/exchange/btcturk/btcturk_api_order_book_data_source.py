@@ -113,14 +113,14 @@ class BtcturkAPIOrderBookDataSource(OrderBookTrackerDataSource):
         async with throttler.execute_task(limit_id=CONSTANTS.TICKER_PRICE_CHANGE_PATH_URL):
             resp: RESTResponse = await rest_assistant.call(request=request)
             resp_json = await resp.json()
-
+        # raise Exception(resp_json["data"])
         ret_val = {}
-        for record in resp_json:
+        for record in resp_json["data"]:
             try:
                 pair = await BtcturkAPIOrderBookDataSource.trading_pair_associated_to_exchange_symbol(
-                    symbol=record["symbol"])
-                ret_val[pair] = ((Decimal(record.get("bidPrice", "0")) +
-                                  Decimal(record.get("askPrice", "0")))
+                    symbol=record["pair"])
+                ret_val[pair] = ((Decimal(record.get("bid", "0")) +
+                                  Decimal(record.get("ask", "0")))
                                  / Decimal("2"))
             except KeyError:
                 # Ignore results for pairs that are not tracked
@@ -183,7 +183,6 @@ class BtcturkAPIOrderBookDataSource(OrderBookTrackerDataSource):
     @staticmethod
     async def trading_pair_associated_to_exchange_symbol(
             symbol: str,
-            domain="com",
             api_factory: Optional[WebAssistantsFactory] = None,
             throttler: Optional[AsyncThrottler] = None) -> str:
         """
@@ -195,7 +194,6 @@ class BtcturkAPIOrderBookDataSource(OrderBookTrackerDataSource):
         :return: trading pair in client notation
         """
         symbol_map = await BtcturkAPIOrderBookDataSource.trading_pair_symbol_map(
-            domain=domain,
             api_factory=api_factory,
             throttler=throttler)
         return symbol_map[symbol]
