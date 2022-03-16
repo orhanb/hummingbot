@@ -1,11 +1,11 @@
 from typing import Dict, Optional, List
 from hummingbot.core.data_type.order_book import OrderBook
 from hummingbot.core.data_type.order_book_message import (
-    OrderBookMessage,
+    # OrderBookMessage,
     OrderBookMessageType
 )
 from hummingbot.connector.exchange.btcturk.btcturk_orderbook_message import BtcturkOrderBookMessage
-from hummingbot.connector.exchange.btcturk.btcturk_constants import EXCHANGE_NAME
+# from hummingbot.connector.exchange.btcturk.btcturk_constants import EXCHANGE_NAME
 
 
 class BtcturkOrderBook(OrderBook):
@@ -73,10 +73,10 @@ class BtcturkOrderBook(OrderBook):
             timestamp=timestamp
         )
 
-    @classmethod
-    def from_snapshot(cls, snapshot: OrderBookMessage):
-        raise NotImplementedError(EXCHANGE_NAME + " order book needs to retain individual order data.")
-
-    @classmethod
-    def restore_from_snapshot_and_diffs(self, snapshot: OrderBookMessage, diffs: List[OrderBookMessage]):
-        raise NotImplementedError(EXCHANGE_NAME + " order book needs to retain individual order data.")
+    # @classmethod
+    # def from_snapshot(cls, snapshot: OrderBookMessage):
+    #     raise NotImplementedError(EXCHANGE_NAME + " order book needs to retain individual order data.")
+    #
+    # @classmethod
+    # def restore_from_snapshot_and_diffs(self, snapshot: OrderBookMessage, diffs: List[OrderBookMessage]):
+    #     raise NotImplementedError(EXCHANGE_NAME + " order book needs to retain individual order data.")
