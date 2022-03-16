@@ -33,7 +33,7 @@ class BtcturkAPIOrderBookDataSourceUnitTests(unittest.TestCase):
         super().setUpClass()
         cls.ev_loop = asyncio.get_event_loop()
         cls.base_asset = "BTC"
-        cls.quote_asset = "TRY"
+        cls.quote_asset = "USDT"
         cls.trading_pair = f"{cls.base_asset}-{cls.quote_asset}"
         cls.ex_trading_pair = cls.base_asset + cls.quote_asset
         cls.domain = "btcturk"
@@ -113,23 +113,39 @@ class BtcturkAPIOrderBookDataSourceUnitTests(unittest.TestCase):
     #     }
     #     return resp
 
-    # def _snapshot_response(self):
-    #     resp = {
-    #         "lastUpdateId": 1027024,
-    #         "bids": [
-    #             [
-    #                 "4.00000000",
-    #                 "431.00000000"
-    #             ]
-    #         ],
-    #         "asks": [
-    #             [
-    #                 "4.00000200",
-    #                 "12.00000000"
-    #             ]
-    #         ]
-    #     }
-    #     return resp
+    def _snapshot_response(self):
+        resp = {
+            "timestamp": 1647437007276.0,
+            "bids": [
+                [
+                    "40312",
+                    "0.00357000"
+                ],
+                [
+                    "40301",
+                    "0.06148429"
+                ],
+                [
+                    "40297",
+                    "0.01098480"
+                ]
+            ],
+            "asks": [
+                [
+                    "40397",
+                    "0.23784556"
+                ],
+                [
+                    "40398",
+                    "0.01655067"
+                ],
+                [
+                    "40399",
+                    "0.21296721"
+                ]
+            ]
+        }
+        return resp
 
     @aioresponses()
     def test_get_last_trade_prices(self, mock_api):
@@ -182,8 +198,8 @@ class BtcturkAPIOrderBookDataSourceUnitTests(unittest.TestCase):
         mock_response: Dict[str, Any] = {
             "data": [
                 {
-                    "pair": "BTCTRY",
-                    "pairNormalized": "BTC_TRY",
+                    "pair": "BTCUSDT",
+                    "pairNormalized": "BTC_USDT",
                     "timestamp": 1647432522115,
                     "last": 596675.00,
                     "high": 609386.00,
@@ -368,18 +384,18 @@ class BtcturkAPIOrderBookDataSourceUnitTests(unittest.TestCase):
     # def test_get_throttler_instance(self):
     #     self.assertIsInstance(BinanceAPIOrderBookDataSource._get_throttler_instance(), AsyncThrottler)
 
-    # @aioresponses()
-    # def test_get_snapshot_successful(self, mock_api):
-    #     url = utils.public_rest_url(path_url=CONSTANTS.SNAPSHOT_PATH_URL, domain=self.domain)
-    #     regex_url = re.compile(f"^{url}".replace(".", r"\.").replace("?", r"\?"))
+    @aioresponses()
+    def test_get_snapshot_successful(self, mock_api):
+        url = utils.public_rest_url(path_url=CONSTANTS.SNAPSHOT_PATH_URL)
+        regex_url = re.compile(f"^{url}".replace(".", r"\.").replace("?", r"\?"))
 
-    #     mock_api.get(regex_url, body=json.dumps(self._snapshot_response()))
+        mock_api.get(regex_url, body=json.dumps(self._snapshot_response()))
 
-    #     result: Dict[str, Any] = self.async_run_with_timeout(
-    #         self.data_source.get_snapshot(self.trading_pair)
-    #     )
+        result: Dict[str, Any] = self.async_run_with_timeout(
+            self.data_source.get_snapshot(self.trading_pair)
+        )
 
-    #     self.assertEqual(self._snapshot_response(), result)
+        self.assertEqual(self._snapshot_response(), result)
 
     # @aioresponses()
     # def test_get_snapshot_catch_exception(self, mock_api):

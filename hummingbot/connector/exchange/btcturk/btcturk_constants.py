@@ -18,7 +18,7 @@ PRIVATE_API_VERSION = "v1"
 TICKER_PRICE_CHANGE_PATH_URL = "/ticker"
 EXCHANGE_INFO_PATH_URL = "/server/exchangeInfo"
 # PING_PATH_URL = "/ping"
-# SNAPSHOT_PATH_URL = "/depth"
+SNAPSHOT_PATH_URL = "/orderbook"
 # SERVER_TIME_PATH_URL = "/time"
 PUBLIC_ORDERBOOK_PATH = "/orderbook"
 PUBLIC_TRADE_PATH = "/trades"
@@ -87,6 +87,11 @@ RATE_LIMITS = [
         time_interval=ONE_MINUTE,
         linked_limits=[(LinkedLimitWeightPair(REQUEST_WEIGHT, 10))],
     ),
+    RateLimit(
+        limit_id=SNAPSHOT_PATH_URL,
+        limit=MAX_REQUEST,
+        time_interval=ONE_MINUTE,
+        linked_limits=[LinkedLimitWeightPair(REQUEST_WEIGHT, 50)]),
     RateLimit(
         limit_id=ACCOUNTS_PATH_URL,
         limit=MAX_REQUEST,

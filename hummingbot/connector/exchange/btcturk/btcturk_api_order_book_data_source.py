@@ -163,7 +163,6 @@ class BtcturkAPIOrderBookDataSource(OrderBookTrackerDataSource):
     @staticmethod
     async def exchange_symbol_associated_to_pair(
             trading_pair: str,
-            domain="com",
             api_factory: Optional[WebAssistantsFactory] = None,
             throttler: Optional[AsyncThrottler] = None,
     ) -> str:
@@ -358,14 +357,13 @@ class BtcturkAPIOrderBookDataSource(OrderBookTrackerDataSource):
         params = {
             "symbol": await self.exchange_symbol_associated_to_pair(
                 trading_pair=trading_pair,
-                domain=self._domain,
                 api_factory=self._api_factory,
                 throttler=self._throttler)
         }
         if limit != 0:
             params["limit"] = str(limit)
 
-        url = btcturk_utils.public_rest_url(path_url=CONSTANTS.SNAPSHOT_PATH_URL, domain=self._domain)
+        url = btcturk_utils.public_rest_url(path_url=CONSTANTS.SNAPSHOT_PATH_URL)
         request = RESTRequest(method=RESTMethod.GET, url=url, params=params)
 
         async with self._throttler.execute_task(limit_id=CONSTANTS.SNAPSHOT_PATH_URL):
@@ -374,7 +372,7 @@ class BtcturkAPIOrderBookDataSource(OrderBookTrackerDataSource):
                 raise IOError(f"Error fetching market snapshot for {trading_pair}. "
                               f"Response: {response}.")
             data = await response.json()
-
+        # raise Exception(data)
         return data
 
     async def _subscribe_channels(self, ws: WSAssistant):
