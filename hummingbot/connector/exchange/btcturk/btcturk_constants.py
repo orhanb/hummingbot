@@ -65,6 +65,7 @@ ORDER_STATE = {
 }
 
 # Websocket event types
+# ToDo
 DIFF_EVENT_TYPE = "depthUpdate"
 TRADE_EVENT_TYPE = "trade"
 

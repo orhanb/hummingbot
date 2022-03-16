@@ -14,9 +14,9 @@ from typing import (
 
 from bidict import bidict
 
-import hummingbot.connector.exchange.binance.binance_constants as CONSTANTS
-from hummingbot.connector.exchange.binance import binance_utils
-from hummingbot.connector.exchange.binance.binance_order_book import BinanceOrderBook
+import hummingbot.connector.exchange.btcturk.btcturk_constants as CONSTANTS
+from hummingbot.connector.exchange.btcturk.btcturk_order_book import BtcturkOrderBook
+from hummingbot.connector.exchange.btcturk import btcturk_utils
 from hummingbot.connector.utils import build_api_factory
 from hummingbot.core.api_throttler.async_throttler import AsyncThrottler
 from hummingbot.core.data_type.order_book import OrderBook
@@ -33,15 +33,21 @@ from hummingbot.core.web_assistant.connections.data_types import (
 from hummingbot.core.web_assistant.rest_assistant import RESTAssistant
 from hummingbot.core.web_assistant.web_assistants_factory import WebAssistantsFactory
 from hummingbot.core.web_assistant.ws_assistant import WSAssistant
+from hummingbot.hummingbot.connector.exchange import btcturk
 from hummingbot.logger import HummingbotLogger
 
 
 class BtcturkAPIOrderBookDataSource(OrderBookTrackerDataSource):
-
-    HEARTBEAT_TIME_INTERVAL = 30.0
-    TRADE_STREAM_ID = 1
-    DIFF_STREAM_ID = 2
-    ONE_HOUR = 60 * 60
+    # Binance
+    # HEARTBEAT_TIME_INTERVAL = 30.0
+    # TRADE_STREAM_ID = 1
+    # DIFF_STREAM_ID = 2
+    # ONE_HOUR = 60 * 60
+    # CryptoCom
+    # MAX_RETRIES = 20
+    # MESSAGE_TIMEOUT = 30.0
+    # SNAPSHOT_TIMEOUT = 10.0
+    # ORDER_BOOK_SNAPSHOT_DELAY = 60 * 60
 
     _logger: Optional[HummingbotLogger] = None
     _trading_pair_symbol_map: Dict[str, Mapping[str, str]] = {}
@@ -101,7 +107,7 @@ class BtcturkAPIOrderBookDataSource(OrderBookTrackerDataSource):
         rest_assistant = await local_api_factory.get_rest_assistant()
         throttler = BtcturkAPIOrderBookDataSource._get_throttler_instance()
 
-        url = binance_utils.public_rest_url(path_url=CONSTANTS.TICKER_PRICE_CHANGE_PATH_URL)
+        url = btcturk_utils.public_rest_url(path_url=CONSTANTS.TICKER_PRICE_CHANGE_PATH_URL)
         request = RESTRequest(method=RESTMethod.GET, url=url)
 
         async with throttler.execute_task(limit_id=CONSTANTS.TICKER_PRICE_CHANGE_PATH_URL):
@@ -122,7 +128,7 @@ class BtcturkAPIOrderBookDataSource(OrderBookTrackerDataSource):
         return ret_val
 
     @classmethod
-    def trading_pair_symbol_map_ready(cls, domain: str = "com"):
+    def trading_pair_symbol_map_ready(cls, domain: str = "btcturk"):
         """
         Checks if the mapping from exchange symbols to client trading pairs has been initialized
         :param domain: the domain of the exchange being used (either "com" or "us"). Default value is "com"
@@ -133,7 +139,7 @@ class BtcturkAPIOrderBookDataSource(OrderBookTrackerDataSource):
     @classmethod
     async def trading_pair_symbol_map(
             cls,
-            domain: str = "com",
+            domain: str = "btcturk",
             api_factory: Optional[WebAssistantsFactory] = None,
             throttler: Optional[AsyncThrottler] = None
     ):
@@ -195,7 +201,7 @@ class BtcturkAPIOrderBookDataSource(OrderBookTrackerDataSource):
         return symbol_map[symbol]
 
     @staticmethod
-    async def fetch_trading_pairs(domain="com") -> List[str]:
+    async def fetch_trading_pairs(domain="btcturk") -> List[str]:
         """
         Returns a list of all known trading pairs enabled to operate with
         :param domain: the domain of the exchange being used (either "com" or "us"). Default value is "com"
@@ -212,7 +218,7 @@ class BtcturkAPIOrderBookDataSource(OrderBookTrackerDataSource):
         """
         snapshot: Dict[str, Any] = await self.get_snapshot(trading_pair, 1000)
         snapshot_timestamp: float = time.time()
-        snapshot_msg: OrderBookMessage = BinanceOrderBook.snapshot_message_from_exchange(
+        snapshot_msg: OrderBookMessage = BtcturkOrderBook.snapshot_message_from_exchange(
             snapshot,
             snapshot_timestamp,
             metadata={"trading_pair": trading_pair}
@@ -239,7 +245,7 @@ class BtcturkAPIOrderBookDataSource(OrderBookTrackerDataSource):
                     domain=self._domain,
                     api_factory=self._api_factory,
                     throttler=self._throttler)
-                trade_msg: OrderBookMessage = BinanceOrderBook.trade_message_from_exchange(
+                trade_msg: OrderBookMessage = BtcturkOrderBook.trade_message_from_exchange(
                     json_msg, {"trading_pair": trading_pair})
                 output.put_nowait(trade_msg)
 
@@ -266,7 +272,7 @@ class BtcturkAPIOrderBookDataSource(OrderBookTrackerDataSource):
                     domain=self._domain,
                     api_factory=self._api_factory,
                     throttler=self._throttler)
-                order_book_message: OrderBookMessage = BinanceOrderBook.diff_message_from_exchange(
+                order_book_message: OrderBookMessage = BtcturkOrderBook.diff_message_from_exchange(
                     json_msg, time.time(), {"trading_pair": trading_pair})
                 output.put_nowait(order_book_message)
             except asyncio.CancelledError:
@@ -288,7 +294,7 @@ class BtcturkAPIOrderBookDataSource(OrderBookTrackerDataSource):
                     try:
                         snapshot: Dict[str, Any] = await self.get_snapshot(trading_pair=trading_pair)
                         snapshot_timestamp: float = time.time()
-                        snapshot_msg: OrderBookMessage = BinanceOrderBook.snapshot_message_from_exchange(
+                        snapshot_msg: OrderBookMessage = BtcturkOrderBook.snapshot_message_from_exchange(
                             snapshot,
                             snapshot_timestamp,
                             metadata={"trading_pair": trading_pair}
@@ -361,7 +367,7 @@ class BtcturkAPIOrderBookDataSource(OrderBookTrackerDataSource):
         if limit != 0:
             params["limit"] = str(limit)
 
-        url = binance_utils.public_rest_url(path_url=CONSTANTS.SNAPSHOT_PATH_URL, domain=self._domain)
+        url = btcturk_utils.public_rest_url(path_url=CONSTANTS.SNAPSHOT_PATH_URL, domain=self._domain)
         request = RESTRequest(method=RESTMethod.GET, url=url, params=params)
 
         async with self._throttler.execute_task(limit_id=CONSTANTS.SNAPSHOT_PATH_URL):
@@ -428,7 +434,7 @@ class BtcturkAPIOrderBookDataSource(OrderBookTrackerDataSource):
                                      rest_assistant: RESTAssistant,
                                      throttler: AsyncThrottler) -> float:
 
-        url = binance_utils.public_rest_url(path_url=CONSTANTS.TICKER_PRICE_CHANGE_PATH_URL, domain=domain)
+        url = btcturk.public_rest_url(path_url=CONSTANTS.TICKER_PRICE_CHANGE_PATH_URL, domain=domain)
         symbol = await cls.exchange_symbol_associated_to_pair(
             trading_pair=trading_pair,
             domain=domain,
@@ -446,7 +452,7 @@ class BtcturkAPIOrderBookDataSource(OrderBookTrackerDataSource):
     @classmethod
     async def _init_trading_pair_symbols(
             cls,
-            domain: str = "com",
+            domain: str = "btcturk",
             api_factory: Optional[WebAssistantsFactory] = None,
             throttler: Optional[AsyncThrottler] = None):
         """
@@ -457,7 +463,7 @@ class BtcturkAPIOrderBookDataSource(OrderBookTrackerDataSource):
         local_api_factory = api_factory or build_api_factory()
         rest_assistant = await local_api_factory.get_rest_assistant()
         local_throttler = throttler or cls._get_throttler_instance()
-        url = binance_utils.public_rest_url(path_url=CONSTANTS.EXCHANGE_INFO_PATH_URL, domain=domain)
+        url = btcturk_utils.public_rest_url(path_url=CONSTANTS.EXCHANGE_INFO_PATH_URL)
         request = RESTRequest(method=RESTMethod.GET, url=url)
 
         try:
@@ -465,8 +471,8 @@ class BtcturkAPIOrderBookDataSource(OrderBookTrackerDataSource):
                 response: RESTResponse = await rest_assistant.call(request=request)
                 if response.status == 200:
                     data = await response.json()
-                    for symbol_data in filter(binance_utils.is_exchange_information_valid, data["symbols"]):
-                        mapping[symbol_data["symbol"]] = f"{symbol_data['baseAsset']}-{symbol_data['quoteAsset']}"
+                    for symbol_data in filter(btcturk_utils.is_exchange_information_valid, data["data"]["symbols"]):
+                        mapping[symbol_data["name"]] = f"{symbol_data['numerator']}-{symbol_data['denominator']}"
         except Exception as ex:
             cls.logger().error(f"There was an error requesting exchange info ({str(ex)})")
 
