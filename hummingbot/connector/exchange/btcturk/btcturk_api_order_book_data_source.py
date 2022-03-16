@@ -33,7 +33,7 @@ from hummingbot.core.web_assistant.connections.data_types import (
 from hummingbot.core.web_assistant.rest_assistant import RESTAssistant
 from hummingbot.core.web_assistant.web_assistants_factory import WebAssistantsFactory
 from hummingbot.core.web_assistant.ws_assistant import WSAssistant
-from hummingbot.hummingbot.connector.exchange import btcturk
+from hummingbot.connector.exchange import btcturk
 from hummingbot.logger import HummingbotLogger
 
 
