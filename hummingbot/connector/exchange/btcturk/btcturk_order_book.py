@@ -1,10 +1,11 @@
 from typing import Dict, Optional, List
 from hummingbot.core.data_type.order_book import OrderBook
 from hummingbot.core.data_type.order_book_message import (
-    # OrderBookMessage,
+    OrderBookMessage,
     OrderBookMessageType
 )
 from hummingbot.connector.exchange.btcturk.btcturk_orderbook_message import BtcturkOrderBookMessage
+# from hummingbot.hummingbot.core.data_type.order_book_message import OrderBookMessage
 # from hummingbot.connector.exchange.btcturk.btcturk_constants import EXCHANGE_NAME
 
 
@@ -29,6 +30,21 @@ class BtcturkOrderBook(OrderBook):
             content=msg[1],
             timestamp=timestamp
         )
+
+    @classmethod
+    def restfull_snapshot_message_from_exchange(cls,
+                                                msg: Dict[str, any],
+                                                timestamp: float,
+                                                metadata: Optional[Dict] = None) -> OrderBookMessage:
+        if metadata:
+            msg.update(metadata)
+        # raise Exception(msg)
+        return OrderBookMessage(OrderBookMessageType.SNAPSHOT, {
+            "trading_pair": msg["trading_pair"],
+            "update_id": msg["data"]["timestamp"],
+            "bids": msg["data"]["bids"],
+            "asks": msg["data"]["asks"]
+        }, timestamp=timestamp)
 
     @classmethod
     def diff_message_from_exchange(cls,

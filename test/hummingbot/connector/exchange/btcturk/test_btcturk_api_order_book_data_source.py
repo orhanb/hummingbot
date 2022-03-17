@@ -18,7 +18,7 @@ import hummingbot.connector.exchange.btcturk.btcturk_constants as CONSTANTS
 import hummingbot.connector.exchange.btcturk.btcturk_utils as utils
 from hummingbot.connector.exchange.btcturk.btcturk_api_order_book_data_source import BtcturkAPIOrderBookDataSource
 from hummingbot.core.api_throttler.async_throttler import AsyncThrottler
-# from hummingbot.core.data_type.order_book import OrderBook
+from hummingbot.core.data_type.order_book import OrderBook
 # from hummingbot.core.data_type.order_book_message import OrderBookMessage
 
 from test.hummingbot.connector.network_mocking_assistant import NetworkMockingAssistant
@@ -391,18 +391,18 @@ class BtcturkAPIOrderBookDataSourceUnitTests(unittest.TestCase):
     # def test_get_throttler_instance(self):
     #     self.assertIsInstance(BinanceAPIOrderBookDataSource._get_throttler_instance(), AsyncThrottler)
 
-    @aioresponses()
-    def test_get_snapshot_successful(self, mock_api):
-        url = utils.public_rest_url(path_url=CONSTANTS.SNAPSHOT_PATH_URL)
-        regex_url = re.compile(f"^{url}".replace(".", r"\.").replace("?", r"\?"))
+    # @aioresponses()
+    # def test_get_snapshot_successful(self, mock_api):
+    #     url = utils.public_rest_url(path_url=CONSTANTS.SNAPSHOT_PATH_URL)
+    #     regex_url = re.compile(f"^{url}".replace(".", r"\.").replace("?", r"\?"))
 
-        mock_api.get(regex_url, body=json.dumps(self._snapshot_response()))
+    #     mock_api.get(regex_url, body=json.dumps(self._snapshot_response()))
 
-        result: Dict[str, Any] = self.async_run_with_timeout(
-            self.data_source.get_snapshot(self.trading_pair)
-        )
+    #     result: Dict[str, Any] = self.async_run_with_timeout(
+    #         self.data_source.get_snapshot(self.trading_pair)
+    #     )
 
-        self.assertEqual(self._snapshot_response(), result)
+    #     self.assertEqual(self._snapshot_response(), result)
 
     # @aioresponses()
     # def test_get_snapshot_catch_exception(self, mock_api):
@@ -415,33 +415,55 @@ class BtcturkAPIOrderBookDataSourceUnitTests(unittest.TestCase):
     #             self.data_source.get_snapshot(self.trading_pair)
     #         )
 
-    # @aioresponses()
-    # def test_get_new_order_book(self, mock_api):
-    #     url = utils.public_rest_url(path_url=CONSTANTS.SNAPSHOT_PATH_URL, domain=self.domain)
-    #     regex_url = re.compile(f"^{url}".replace(".", r"\.").replace("?", r"\?"))
+    @aioresponses()
+    def test_get_new_order_book(self, mock_api):
+        url = utils.public_rest_url(path_url=CONSTANTS.SNAPSHOT_PATH_URL)
+        regex_url = re.compile(f"^{url}".replace(".", r"\.").replace("?", r"\?"))
+        null = None
+        true = True
+        mock_response: Dict[str, Any] = {
+            "data": {
+                "timestamp": 1647501159759.0,
+                "bids": [
+                    [
+                        "40803",
+                        "0.03178618"
+                    ],
+                    [
+                        "40796",
+                        "0.00840000"
+                    ],
+                    [
+                        "40795",
+                        "0.98051231"
+                    ]
+                ],
+                "asks": [
+                    [
+                        "40832",
+                        "0.00962551"
+                    ],
+                    [
+                        "40833",
+                        "0.00925985"
+                    ],
+                    [
+                        "40837",
+                        "0.06084964"
+                    ]
+                ]
+            },
+            "success": true,
+            "message": null,
+            "code": 0
+        }
+        mock_api.get(regex_url, body=json.dumps(mock_response))
 
-    #     mock_response: Dict[str, Any] = {
-    #         "lastUpdateId": 1,
-    #         "bids": [
-    #             [
-    #                 "4.00000000",
-    #                 "431.00000000"
-    #             ]
-    #         ],
-    #         "asks": [
-    #             [
-    #                 "4.00000200",
-    #                 "12.00000000"
-    #             ]
-    #         ]
-    #     }
-    #     mock_api.get(regex_url, body=json.dumps(mock_response))
+        result: OrderBook = self.async_run_with_timeout(
+            self.data_source.get_new_order_book(self.trading_pair)
+        )
 
-    #     result: OrderBook = self.async_run_with_timeout(
-    #         self.data_source.get_new_order_book(self.trading_pair)
-    #     )
-
-    #     self.assertEqual(1, result.snapshot_uid)
+        self.assertEqual(1647501159759.0, result.snapshot_uid)
 
     # @patch("aiohttp.ClientSession.ws_connect", new_callable=AsyncMock)
     # def test_listen_for_subscriptions_subscribes_to_trades_and_order_diffs(self, ws_connect_mock):

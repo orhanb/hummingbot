@@ -215,7 +215,7 @@ class BtcturkAPIOrderBookDataSource(OrderBookTrackerDataSource):
         """
         snapshot: Dict[str, Any] = await self.get_snapshot(trading_pair, 1000)
         snapshot_timestamp: float = time.time()
-        snapshot_msg: OrderBookMessage = BtcturkOrderBook.snapshot_message_from_exchange(
+        snapshot_msg: OrderBookMessage = BtcturkOrderBook.restfull_snapshot_message_from_exchange(
             snapshot,
             snapshot_timestamp,
             metadata={"trading_pair": trading_pair}
@@ -372,7 +372,7 @@ class BtcturkAPIOrderBookDataSource(OrderBookTrackerDataSource):
                 raise IOError(f"Error fetching market snapshot for {trading_pair}. "
                               f"Response: {response}.")
             data = await response.json()
-        # raise Exception(data)
+        # raise Exception(data["data"])
         return data
 
     async def _subscribe_channels(self, ws: WSAssistant):
