@@ -563,24 +563,22 @@ class BtcturkExchange(ExchangeBase):
         tracked_order = self._order_tracker.fetch_tracked_order(order_id)
         if tracked_order is not None:
             try:
-                symbol = await BtcturkAPIOrderBookDataSource.exchange_symbol_associated_to_pair(
-                    trading_pair=trading_pair,
-                    domain=self._domain,
-                    api_factory=self._api_factory,
-                    throttler=self._throttler,
-                )
+                # symbol = await BtcturkAPIOrderBookDataSource.exchange_symbol_associated_to_pair(
+                #     trading_pair=trading_pair,
+                #     api_factory=self._api_factory,
+                #     throttler=self._throttler,
+                # )
                 api_params = {
-                    "symbol": symbol,
-                    "origClientOrderId": order_id,
+                    "id": order_id,
                 }
                 cancel_result = await self._api_request(
                     method=RESTMethod.DELETE,
-                    path_url=CONSTANTS.ORDER_PATH_URL,
+                    path_url=CONSTANTS.ORDER_PATH,
                     params=api_params,
                     is_auth_required=True,
                 )
 
-                if cancel_result.get("status") == "CANCELED":
+                if cancel_result.get("success") == "true":
                     order_update: OrderUpdate = OrderUpdate(
                         client_order_id=order_id,
                         trading_pair=tracked_order.trading_pair,
@@ -1053,9 +1051,9 @@ class BtcturkExchange(ExchangeBase):
     async def _get_current_server_time(self):
         response = await self._api_request(
             method=RESTMethod.GET,
-            path_url=CONSTANTS.SERVER_TIME_PATH_URL,
+            path_url=CONSTANTS.EXCHANGE_INFO_PATH_URL,
         )
-        return response["serverTime"]
+        return response["data"]["serverTime"]
 
     async def _get_rest_assistant(self) -> RESTAssistant:
         if self._rest_assistant is None:
