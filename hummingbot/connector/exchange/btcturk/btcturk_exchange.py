@@ -738,6 +738,7 @@ class BtcturkExchange(ExchangeBase):
         stream data source. It keeps reading events from the queue until the task is interrupted.
         The events received are balance updates, order updates and trade events.
         """
+        # TODO thinking about how to get user private stream to _iter_user_event_queue()
         async for event_message in self._iter_user_event_queue():
             try:
                 event_type = event_message.get("e")
@@ -974,7 +975,7 @@ class BtcturkExchange(ExchangeBase):
                 self.logger().network(
                     "Unknown error. Retrying after 1 seconds.",
                     exc_info=True,
-                    app_warning_msg="Could not fetch user events from Binance. Check API key and network connection.",
+                    app_warning_msg="Could not fetch user events from Btcturk. Check API key and network connection.",
                 )
                 await asyncio.sleep(1.0)
 
