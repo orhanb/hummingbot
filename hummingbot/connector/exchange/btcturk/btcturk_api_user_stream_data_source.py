@@ -1,25 +1,21 @@
 import asyncio
 import logging
-import time
+import hashlib
+import hmac
+import base64
+
+from hummingbot.connector.time_synchronizer import TimeSynchronizer
 
 from typing import (
-    Dict,
-    Optional,
-    Tuple,
+    Optional
 )
 
 import hummingbot.connector.exchange.btcturk.btcturk_constants as CONSTANTS
-from hummingbot.connector.exchange.btcturk import btcturk_utils
 from hummingbot.connector.exchange.btcturk.btcturk_auth import BtcturkAuth
 from hummingbot.connector.utils import build_api_factory
 from hummingbot.core.api_throttler.async_throttler import AsyncThrottler
 from hummingbot.core.data_type.user_stream_tracker_data_source import UserStreamTrackerDataSource
 from hummingbot.core.utils.async_utils import safe_ensure_future
-from hummingbot.core.web_assistant.connections.data_types import (
-    RESTMethod,
-    RESTRequest,
-    RESTResponse,
-)
 from hummingbot.core.web_assistant.rest_assistant import RESTAssistant
 from hummingbot.core.web_assistant.web_assistants_factory import WebAssistantsFactory
 from hummingbot.core.web_assistant.ws_assistant import WSAssistant
@@ -48,8 +44,8 @@ class BtcturkAPIUserStreamDataSource(UserStreamTrackerDataSource):
         self._rest_assistant: Optional[RESTAssistant] = None
         self._ws_assistant: Optional[WSAssistant] = None
 
-        self._listen_key_initialized_event: asyncio.Event = asyncio.Event()
-        self._last_listen_key_ping_ts = 0
+        self._ws_auth_event: asyncio.Event = asyncio.Event()
+        # self._last_listen_key_ping_ts = 0
 
     @classmethod
     def logger(cls) -> HummingbotLogger:
@@ -76,17 +72,28 @@ class BtcturkAPIUserStreamDataSource(UserStreamTrackerDataSource):
         ws = None
         while True:
             try:
-                self._manage_listen_key_task = safe_ensure_future(self._manage_listen_key_task_loop())
-                await self._listen_key_initialized_event.wait()
 
                 ws: WSAssistant = await self._get_ws_assistant()
                 url = f"{CONSTANTS.WSS_URL}"
                 await ws.connect(ws_url=url, ping_timeout=CONSTANTS.WS_HEARTBEAT_TIME_INTERVAL)
+                safe_ensure_future(self._send_authentication_request(ws))
 
                 async for ws_response in ws.iter_messages():
                     data = ws_response.data
+
                     if len(data) > 0:
-                        output.put_nowait(data)
+                        if data[0] == 112:
+                            login_result = data[1]["Ok"]
+                            if not login_result:
+                                self.logger().error("Login failed", data)
+                                break
+                            else:
+                                self._ws_auth_event.set()
+
+                        # if (data[0] == 201) or (data[0] == 441) or (data[0] == 451) or (data[0] == 452) or (data[0] == 453):
+                        if data[0] == 441:
+                            output.put_nowait(data[1])
+
             except asyncio.CancelledError:
                 raise
             except Exception:
@@ -94,67 +101,35 @@ class BtcturkAPIUserStreamDataSource(UserStreamTrackerDataSource):
             finally:
                 # Make sure no background task is leaked.
                 ws and await ws.disconnect()
-                self._manage_listen_key_task and self._manage_listen_key_task.cancel()
-                self._current_listen_key = None
-                self._listen_key_initialized_event.clear()
                 await self._sleep(5)
 
     @classmethod
     def _get_throttler_instance(cls) -> AsyncThrottler:
         return AsyncThrottler(CONSTANTS.RATE_LIMITS)
 
-    async def _get_listen_key(self):
-        rest_assistant = await self._get_rest_assistant()
-        url = btcturk_utils.private_rest_url(path_url=CONSTANTS.BINANCE_USER_STREAM_PATH_URL, domain=self._domain)
-        request = RESTRequest(method=RESTMethod.POST, url=url, headers=self._auth.header_for_authentication())
-
-        async with self._throttler.execute_task(limit_id=CONSTANTS.BINANCE_USER_STREAM_PATH_URL):
-            response: RESTResponse = await rest_assistant.call(request=request)
-
-            if response.status != 200:
-                raise IOError(f"Error fetching user stream listen key. Response: {response}")
-            data: Dict[str, str] = await response.json()
-            return data["listenKey"]
-
-    async def _ping_listen_key(self) -> bool:
-        rest_assistant = await self._get_rest_assistant()
-        url = btcturk_utils.private_rest_url(path_url=CONSTANTS.BINANCE_USER_STREAM_PATH_URL, domain=self._domain)
-        request = RESTRequest(method=RESTMethod.PUT, url=url,
-                              headers=self._auth.header_for_authentication(),
-                              params={"listenKey": self._current_listen_key})
-
-        async with self._throttler.execute_task(limit_id=CONSTANTS.BINANCE_USER_STREAM_PATH_URL):
-            response: RESTResponse = await rest_assistant.call(request=request)
-
-            data: Tuple[str, any] = await response.json()
-            if "code" in data:
-                self.logger().warning(f"Failed to refresh the listen key {self._current_listen_key}: {data}")
-                return False
-            return True
-
-    async def _manage_listen_key_task_loop(self):
-        try:
-            while True:
-                now = int(time.time())
-                if self._current_listen_key is None:
-                    self._current_listen_key = await self._get_listen_key()
-                    self.logger().info(f"Successfully obtained listen key {self._current_listen_key}")
-                    self._listen_key_initialized_event.set()
-                    self._last_listen_key_ping_ts = int(time.time())
-
-                if now - self._last_listen_key_ping_ts >= self.LISTEN_KEY_KEEP_ALIVE_INTERVAL:
-                    success: bool = await self._ping_listen_key()
-                    if not success:
-                        self.logger().error("Error occurred renewing listen key ...")
-                        break
-                    else:
-                        self.logger().info(f"Refreshed listen key {self._current_listen_key}.")
-                        self._last_listen_key_ping_ts = int(time.time())
-                else:
-                    await self._sleep(self.LISTEN_KEY_KEEP_ALIVE_INTERVAL)
-        finally:
-            self._current_listen_key = None
-            self._listen_key_initialized_event.clear()
+    async def _send_authentication_request(self, ws: WSAssistant):
+        public_key = self._auth.api_key
+        private_key = self._auth.secret_key
+        nonce = 3000
+        base_string = "{}{}".format(public_key, nonce).encode("utf-8")
+        signature = hmac.new(
+            base64.b64decode(private_key), base_string, hashlib.sha256
+        ).digest()
+        signature = base64.b64encode(signature)
+        ts = TimeSynchronizer()
+        timestamp = round(ts.time() * 1000)
+        hmac_message_object = [
+            114,
+            {
+                "nonce": nonce,
+                "publicKey": public_key,
+                "signature": signature.decode("utf-8"),
+                "timestamp": timestamp,
+                "type": 114,
+            },
+        ]
+        # request = WSRequest(payload=hmac_message_object)
+        await ws._connection._connection.send_json(hmac_message_object)
 
     async def _get_rest_assistant(self) -> RESTAssistant:
         if self._rest_assistant is None:
