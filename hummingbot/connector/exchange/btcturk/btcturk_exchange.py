@@ -17,10 +17,10 @@ import hummingbot.connector.exchange.btcturk.btcturk_constants as CONSTANTS
 from hummingbot.connector.client_order_tracker import ClientOrderTracker
 from hummingbot.connector.exchange_base import ExchangeBase
 from hummingbot.connector.exchange.btcturk import btcturk_utils
-from hummingbot.connector.exchange.binance.binance_api_order_book_data_source import BinanceAPIOrderBookDataSource
+from hummingbot.connector.exchange.btcturk.btcturk_api_order_book_data_source import BtcturkAPIOrderBookDataSource
 from hummingbot.connector.exchange.btcturk.btcturk_auth import BtcturkAuth
-from hummingbot.connector.exchange.binance.binance_order_book_tracker import BinanceOrderBookTracker
-from hummingbot.connector.exchange.binance.binance_user_stream_tracker import BinanceUserStreamTracker
+from hummingbot.connector.exchange.btcturk.btcturk_order_book_tracker import BtcturkOrderBookTracker
+from hummingbot.connector.exchange.btcturk.btcturk_user_stream_tracker import BtcturkUserStreamTracker
 from hummingbot.connector.time_synchronizer import TimeSynchronizer
 from hummingbot.connector.trading_rule import TradingRule
 from hummingbot.connector.utils import TradeFillOrderDetails
@@ -69,9 +69,7 @@ class BtcturkExchange(ExchangeBase):
         btcturk_api_secret: str,
         trading_pairs: Optional[List[str]] = None,
         trading_required: bool = True,
-        domain="com",
     ):
-        self._domain = domain
         self._btcturk_time_synchronizer = TimeSynchronizer()
         super().__init__()
         self._trading_required = trading_required
@@ -81,10 +79,10 @@ class BtcturkExchange(ExchangeBase):
         self._api_factory = WebAssistantsFactory(auth=self._auth)
         self._rest_assistant = None
         self._throttler = AsyncThrottler(CONSTANTS.RATE_LIMITS)
-        self._order_book_tracker = BinanceOrderBookTracker(
-            trading_pairs=trading_pairs, domain=domain, api_factory=self._api_factory, throttler=self._throttler
+        self._order_book_tracker = BtcturkOrderBookTracker(
+            trading_pairs=trading_pairs, api_factory=self._api_factory, throttler=self._throttler
         )
-        self._user_stream_tracker = BinanceUserStreamTracker(auth=self._auth, domain=domain, throttler=self._throttler)
+        self._user_stream_tracker = BtcturkUserStreamTracker(auth=self._auth, throttler=self._throttler)
         self._ev_loop = asyncio.get_event_loop()
         self._poll_notifier = asyncio.Event()
         self._last_timestamp = 0
@@ -134,11 +132,11 @@ class BtcturkExchange(ExchangeBase):
         return {key: value.to_json() for key, value in self.in_flight_orders.items()}
 
     @property
-    def order_book_tracker(self) -> BinanceOrderBookTracker:
+    def order_book_tracker(self) -> BtcturkOrderBookTracker:
         return self._order_book_tracker
 
     @property
-    def user_stream_tracker(self) -> BinanceUserStreamTracker:
+    def user_stream_tracker(self) -> BtcturkUserStreamTracker:
         return self._user_stream_tracker
 
     @property
@@ -148,8 +146,7 @@ class BtcturkExchange(ExchangeBase):
         The key of each entry is the condition name, and the value is True if condition is ready, False otherwise.
         """
         return {
-            "symbols_mapping_initialized": BinanceAPIOrderBookDataSource.trading_pair_symbol_map_ready(
-                domain=self._domain
+            "symbols_mapping_initialized": BtcturkAPIOrderBookDataSource.trading_pair_symbol_map_ready(
             ),
             "order_books_initialized": self._order_book_tracker.ready,
             "account_balance": len(self._account_balances) > 0 if self._trading_required else True,
@@ -215,10 +212,11 @@ class BtcturkExchange(ExchangeBase):
         """
         Checks connectivity with the exchange using the API
         """
+        # Use exchange data instead fo PingPathUrl
         try:
             await self._api_request(
                 method=RESTMethod.GET,
-                path_url=CONSTANTS.PING_PATH_URL,
+                path_url=CONSTANTS.EXCHANGE_INFO_PATH_URL,
             )
         except asyncio.CancelledError:
             raise
@@ -510,7 +508,7 @@ class BtcturkExchange(ExchangeBase):
         price_str = f"{price:f}"
         type_str = BtcturkExchange.binance_order_type(order_type)
         side_str = CONSTANTS.SIDE_BUY if trade_type is TradeType.BUY else CONSTANTS.SIDE_SELL
-        symbol = await BinanceAPIOrderBookDataSource.exchange_symbol_associated_to_pair(
+        symbol = await BtcturkAPIOrderBookDataSource.exchange_symbol_associated_to_pair(
             trading_pair=trading_pair, domain=self._domain, api_factory=self._api_factory, throttler=self._throttler
         )
         api_params = {
@@ -565,7 +563,7 @@ class BtcturkExchange(ExchangeBase):
         tracked_order = self._order_tracker.fetch_tracked_order(order_id)
         if tracked_order is not None:
             try:
-                symbol = await BinanceAPIOrderBookDataSource.exchange_symbol_associated_to_pair(
+                symbol = await BtcturkAPIOrderBookDataSource.exchange_symbol_associated_to_pair(
                     trading_pair=trading_pair,
                     domain=self._domain,
                     api_factory=self._api_factory,
@@ -647,7 +645,7 @@ class BtcturkExchange(ExchangeBase):
                 self.logger().network(
                     "Unexpected error while fetching trading rules.",
                     exc_info=True,
-                    app_warning_msg="Could not fetch new trading rules from Binance. " "Check network connection.",
+                    app_warning_msg="Could not fetch new trading rules from Btcturk. " "Check network connection.",
                 )
                 await asyncio.sleep(0.5)
 
@@ -662,35 +660,48 @@ class BtcturkExchange(ExchangeBase):
         """
         Example:
         {
-            "symbol": "ETHBTC",
-            "baseAssetPrecision": 8,
-            "quotePrecision": 8,
-            "orderTypes": ["LIMIT", "MARKET"],
+            "id": 1,
+            "name": "BTCTRY",
+            "nameNormalized": "BTC_TRY",
+            "status": "TRADING",
+            "numerator": "BTC",
+            "denominator": "TRY",
+            "numeratorScale": 8,
+            "denominatorScale": 2,
+            "hasFraction": false,
             "filters": [
                 {
                     "filterType": "PRICE_FILTER",
-                    "minPrice": "0.00000100",
-                    "maxPrice": "100000.00000000",
-                    "tickSize": "0.00000100"
-                }, {
-                    "filterType": "LOT_SIZE",
-                    "minQty": "0.00100000",
-                    "maxQty": "100000.00000000",
-                    "stepSize": "0.00100000"
-                }, {
-                    "filterType": "MIN_NOTIONAL",
-                    "minNotional": "0.00100000"
+                    "minPrice": "0.0000000000001",
+                    "maxPrice": "10000000",
+                    "tickSize": "10",
+                    "minExchangeValue": "99.91",
+                    "minAmount": null,
+                    "maxAmount": null
                 }
-            ]
-        }
+            ],
+            "orderMethods": [
+                "MARKET",
+                "LIMIT",
+                "STOP_MARKET",
+                "STOP_LIMIT"
+            ],
+            "displayFormat": "#,###",
+            "commissionFromNumerator": false,
+            "order": 1000,
+            "priceRounding": false,
+            "isNew": false,
+            "marketPriceWarningThresholdPercentage": 0.2500000000000000,
+            "maximumOrderAmount": null,
+            "maximumLimitOrderPrice": 6034840.0000000000000000,
+            "minimumLimitOrderPrice": 60348.4000000000000000}
         """
-        trading_pair_rules = exchange_info_dict.get("symbols", [])
+        trading_pair_rules = exchange_info_dict["data"].get("symbols", [])
         retval = []
         for rule in filter(btcturk_utils.is_exchange_information_valid, trading_pair_rules):
             try:
-                trading_pair = await BinanceAPIOrderBookDataSource.trading_pair_associated_to_exchange_symbol(
-                    symbol=rule.get("symbol"),
-                    domain=self._domain,
+                trading_pair = await BtcturkAPIOrderBookDataSource.trading_pair_associated_to_exchange_symbol(
+                    symbol=rule.get("name"),
                     api_factory=self._api_factory,
                     throttler=self._throttler,
                 )
@@ -806,7 +817,7 @@ class BtcturkExchange(ExchangeBase):
             trading_pairs = self._order_book_tracker._trading_pairs
             for trading_pair in trading_pairs:
                 params = {
-                    "symbol": await BinanceAPIOrderBookDataSource.exchange_symbol_associated_to_pair(
+                    "symbol": await BtcturkAPIOrderBookDataSource.exchange_symbol_associated_to_pair(
                         trading_pair=trading_pair,
                         domain=self._domain,
                         api_factory=self._api_factory,
@@ -893,7 +904,7 @@ class BtcturkExchange(ExchangeBase):
                     method=RESTMethod.GET,
                     path_url=CONSTANTS.ORDER_PATH_URL,
                     params={
-                        "symbol": await BinanceAPIOrderBookDataSource.exchange_symbol_associated_to_pair(
+                        "symbol": await BtcturkAPIOrderBookDataSource.exchange_symbol_associated_to_pair(
                             trading_pair=o.trading_pair,
                             domain=self._domain,
                             api_factory=self._api_factory,

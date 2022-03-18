@@ -156,99 +156,99 @@ class BinanceOrderBookTrackerUnitTests(unittest.TestCase):
         # TODO - implement restore_from_snapshot_and_diffs
         self.assertEqual(6905470, self.tracker.order_books[self.trading_pair].snapshot_uid)
 
-    def test_track_single_book_snapshot_message_with_past_diffs(self):
-        msg_431 = [431,
-                   {'AO': [
-                       {'A': '0.01394686', 'P': '591468'},
-                       {'A': '0.54552192', 'P': '591469'},
-                       {'A': '0.01182674', 'P': '592000'},
-                       {'A': '0.17179163', 'P': '592005'},
-                       {'A': '0.00845273', 'P': '592116'}],
-                       'BO': [
-                           {'A': '0.00289257', 'P': '590951'},
-                           {'A': '0.2', 'P': '590948'},
-                           {'A': '0.02674451', 'P': '590694'},
-                           {'A': '0.02', 'P': '590569'},
-                           {'A': '0.28886161', 'P': '590154'}],
-                       'CS': 6905470,
-                       'PS': 'BTCTRY',
-                       'channel': 'orderbook',
-                       'event': 'BTCTRY',
-                       'type': 431}]
-        snapshot_msg: OrderBookMessage = BtcturkOrderBook.snapshot_message_from_exchange(
-            msg=msg_431,
-            timestamp=time.time()
-        )
+    # def test_track_single_book_snapshot_message_with_past_diffs(self):
+    #     msg_431 = [431,
+    #                {'AO': [
+    #                    {'A': '0.01394686', 'P': '591468'},
+    #                    {'A': '0.54552192', 'P': '591469'},
+    #                    {'A': '0.01182674', 'P': '592000'},
+    #                    {'A': '0.17179163', 'P': '592005'},
+    #                    {'A': '0.00845273', 'P': '592116'}],
+    #                    'BO': [
+    #                        {'A': '0.00289257', 'P': '590951'},
+    #                        {'A': '0.2', 'P': '590948'},
+    #                        {'A': '0.02674451', 'P': '590694'},
+    #                        {'A': '0.02', 'P': '590569'},
+    #                        {'A': '0.28886161', 'P': '590154'}],
+    #                    'CS': 6905470,
+    #                    'PS': 'BTCTRY',
+    #                    'channel': 'orderbook',
+    #                    'event': 'BTCTRY',
+    #                    'type': 431}]
+    #     snapshot_msg: OrderBookMessage = BtcturkOrderBook.snapshot_message_from_exchange(
+    #         msg=msg_431,
+    #         timestamp=time.time()
+    #     )
+    #     msg_432 = [
+    #         432,
+    #         {
+    #             "CS": 6905469,
+    #             "PS": "BTCTRY",
+    #             "AO": [
+    #                 {"CP": 3, "P": "591468", "A": "0.01"}
+    #             ],
+    #             "BO": [
+    #                 {"CP": 1, "P": "590951", "A": "0.02"}
+    #             ],
+    #             "channel": "obdiff",
+    #             "event": "BTCTRY",
+    #             "type": 432,
+    #         },
+    #     ]
+    #     past_diff_msg: OrderBookMessage = BtcturkOrderBook.diff_message_from_exchange(
+    #         msg=msg_432,
+    #         metadata={"trading_pair": self.trading_pair}
+    #     )
+
+    #     self.tracking_task = self.ev_loop.create_task(
+    #         self.tracker._track_single_book(self.trading_pair)
+    #     )
+
+    #     self.ev_loop.run_until_complete(asyncio.sleep(0.5))
+
+    #     self._simulate_message_enqueue(self.tracker._past_diffs_windows[self.trading_pair], past_diff_msg)
+    #     self._simulate_message_enqueue(self.tracker._tracking_message_queues[self.trading_pair], snapshot_msg)
+
+    #     self.ev_loop.run_until_complete(asyncio.sleep(0.5))
+
+    #     self.assertEqual(6905470, self.tracker.order_books[self.trading_pair].snapshot_uid)
+    #     self.assertEqual(6905469, self.tracker.order_books[self.trading_pair].last_diff_uid)
+
+    def test_track_single_book_diff_message(self):
         msg_432 = [
             432,
             {
-                "CS": 6905469,
-                "PS": "BTCTRY",
+                "CS": 7414519,
+                "PS": "AVAXUSDT",
                 "AO": [
-                    {"CP": 3, "P": "591468", "A": "0.01"}
+                    {"CP": 3, "P": "67.64", "A": "7"},
+                    {"CP": 1, "P": "67.68", "A": "487.588"},
+                    {"CP": 3, "P": "67.7", "A": "0.5"},
+                    {"CP": 0, "P": "67.74", "A": "1.982"},
+                    {"CP": 1, "P": "71.74", "A": "0.4"},
                 ],
                 "BO": [
-                    {"CP": 1, "P": "590951", "A": "0.02"}
+                    {"CP": 1, "P": "67.49", "A": "4512.417"},
+                    {"CP": 3, "P": "67.47", "A": "29.447"},
+                    {"CP": 3, "P": "67.44", "A": "6"},
+                    {"CP": 1, "P": "67.43", "A": "73.833"},
                 ],
                 "channel": "obdiff",
-                "event": "BTCTRY",
+                "event": "AVAXUSDT",
                 "type": 432,
             },
         ]
-        past_diff_msg: OrderBookMessage = BtcturkOrderBook.diff_message_from_exchange(
+        diff_msg: OrderBookMessage = BtcturkOrderBook.diff_message_from_exchange(
             msg=msg_432,
             metadata={"trading_pair": self.trading_pair}
         )
 
+        self._simulate_message_enqueue(self.tracker._tracking_message_queues[self.trading_pair], diff_msg)
+
         self.tracking_task = self.ev_loop.create_task(
             self.tracker._track_single_book(self.trading_pair)
         )
-
         self.ev_loop.run_until_complete(asyncio.sleep(0.5))
 
-        self._simulate_message_enqueue(self.tracker._past_diffs_windows[self.trading_pair], past_diff_msg)
-        self._simulate_message_enqueue(self.tracker._tracking_message_queues[self.trading_pair], snapshot_msg)
-
-        self.ev_loop.run_until_complete(asyncio.sleep(0.5))
-
-        self.assertEqual(6905470, self.tracker.order_books[self.trading_pair].snapshot_uid)
-        self.assertEqual(6905469, self.tracker.order_books[self.trading_pair].last_diff_uid)
-
-    # def test_track_single_book_diff_message(self):
-    #     msg_432 = [
-    #         432,
-    #         {
-    #             "CS": 7414519,
-    #             "PS": "AVAXUSDT",
-    #             "AO": [
-    #                 {"CP": 3, "P": "67.64", "A": "7"},
-    #                 {"CP": 1, "P": "67.68", "A": "487.588"},
-    #                 {"CP": 3, "P": "67.7", "A": "0.5"},
-    #                 {"CP": 0, "P": "67.74", "A": "1.982"},
-    #                 {"CP": 1, "P": "71.74", "A": "0.4"},
-    #             ],
-    #             "BO": [
-    #                 {"CP": 1, "P": "67.49", "A": "4512.417"},
-    #                 {"CP": 3, "P": "67.47", "A": "29.447"},
-    #                 {"CP": 3, "P": "67.44", "A": "6"},
-    #                 {"CP": 1, "P": "67.43", "A": "73.833"},
-    #             ],
-    #             "channel": "obdiff",
-    #             "event": "AVAXUSDT",
-    #             "type": 432,
-    #         },
-    #     ]
-    #     diff_msg: OrderBookMessage = BtcturkOrderBook.diff_message_from_exchange(
-    #         msg=msg_432,
-    #         metadata={"trading_pair": self.trading_pair}
-    #     )
-    #
-    #     self._simulate_message_enqueue(self.tracker._tracking_message_queues[self.trading_pair], diff_msg)
-    #
-    #     self.tracking_task = self.ev_loop.create_task(
-    #         self.tracker._track_single_book(self.trading_pair)
-    #     )
-    #     self.ev_loop.run_until_complete(asyncio.sleep(0.5))
-    #
-    #     self.assertEqual(0, self.tracker.order_books[self.trading_pair].snapshot_uid)
-    #     self.assertEqual(2, self.tracker.order_books[self.trading_pair].last_diff_uid)
+        self.assertEqual(0, self.tracker.order_books[self.trading_pair].snapshot_uid)
+        self.assertEqual(7414519, self.tracker.order_books[self.trading_pair].last_diff_uid)
