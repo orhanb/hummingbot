@@ -707,13 +707,16 @@ class BtcturkExchange(ExchangeBase):
                 )
                 filters = rule.get("filters")
                 price_filter = [f for f in filters if f.get("filterType") == "PRICE_FILTER"][0]
-                lot_size_filter = [f for f in filters if f.get("filterType") == "LOT_SIZE"][0]
-                min_notional_filter = [f for f in filters if f.get("filterType") == "MIN_NOTIONAL"][0]
+                # lot_size_filter = [f for f in filters if f.get("filterType") == "LOT_SIZE"][0]
+                # min_notional_filter = [f for f in filters if f.get("filterType") == "MIN_NOTIONAL"][0]
 
-                min_order_size = Decimal(lot_size_filter.get("minQty"))
+                # min_order_size = Decimal(price_filter.get("minExchangeValue"))
+                min_order_size = Decimal(0)
                 tick_size = price_filter.get("tickSize")
-                step_size = Decimal(lot_size_filter.get("stepSize"))
-                min_notional = Decimal(min_notional_filter.get("minNotional"))
+                denominatorScale = rule.get("denominatorScale")
+                step_size_btcturk = 10 ** (-denominatorScale) if rule.get("hasFraction") == "true" else 0
+                step_size = Decimal(step_size_btcturk)
+                min_notional = Decimal(price_filter.get("minExchangeValue"))
 
                 retval.append(
                     TradingRule(
