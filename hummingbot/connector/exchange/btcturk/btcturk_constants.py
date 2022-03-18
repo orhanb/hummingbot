@@ -29,7 +29,7 @@ OPEN_ORDER_PATH_URL = "/openOrders"
 ALL_ORDER_PATH_URL = "/allOrders"
 ORDER_PATH = "/order"
 # BINANCE_USER_STREAM_PATH_URL = "/userDataStream"
-# WS_HEARTBEAT_TIME_INTERVAL = 30
+WS_HEARTBEAT_TIME_INTERVAL = 30
 
 # Binance params
 
@@ -66,7 +66,8 @@ ORDER_STATE = {
 
 # Websocket event types
 # ToDo
-DIFF_EVENT_TYPE = "depthUpdate"
+DIFF_EVENT_TYPE = "obdiff"
+ORDERFULL_EVENT_TYPE = "order"
 TRADE_EVENT_TYPE = "trade"
 
 RATE_LIMITS = [

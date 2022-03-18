@@ -42,7 +42,7 @@ class BtcturkAPIOrderBookDataSource(OrderBookTrackerDataSource):
     # HEARTBEAT_TIME_INTERVAL = 30.0
     # TRADE_STREAM_ID = 1
     # DIFF_STREAM_ID = 2
-    # ONE_HOUR = 60 * 60
+    ONE_HOUR = 60 * 60
     # CryptoCom
     # MAX_RETRIES = 20
     # MESSAGE_TIMEOUT = 30.0
@@ -235,11 +235,10 @@ class BtcturkAPIOrderBookDataSource(OrderBookTrackerDataSource):
             try:
                 json_msg = await message_queue.get()
 
-                if "result" in json_msg:
-                    continue
+                # if "result" in json_msg:
+                #     continue
                 trading_pair = await BtcturkAPIOrderBookDataSource.trading_pair_associated_to_exchange_symbol(
-                    symbol=json_msg["s"],
-                    domain=self._domain,
+                    symbol=json_msg[1]["PS"],
                     api_factory=self._api_factory,
                     throttler=self._throttler)
                 trade_msg: OrderBookMessage = BtcturkOrderBook.trade_message_from_exchange(
@@ -262,11 +261,10 @@ class BtcturkAPIOrderBookDataSource(OrderBookTrackerDataSource):
         while True:
             try:
                 json_msg = await message_queue.get()
-                if "result" in json_msg:
-                    continue
+                # if "result" in json_msg:
+                #     continue
                 trading_pair = await BtcturkAPIOrderBookDataSource.trading_pair_associated_to_exchange_symbol(
-                    symbol=json_msg["s"],
-                    domain=self._domain,
+                    symbol=json_msg[1]["PS"],
                     api_factory=self._api_factory,
                     throttler=self._throttler)
                 order_book_message: OrderBookMessage = BtcturkOrderBook.diff_message_from_exchange(
@@ -285,18 +283,18 @@ class BtcturkAPIOrderBookDataSource(OrderBookTrackerDataSource):
         :param ev_loop: the event loop the method will run in
         :param output: a queue to add the created snapshot messages
         """
+        message_queue = self._message_queue[CONSTANTS.ORDERFULL_EVENT_TYPE]
         while True:
             try:
+                json_msg = await message_queue.get()
                 for trading_pair in self._trading_pairs:
                     try:
-                        snapshot: Dict[str, Any] = await self.get_snapshot(trading_pair=trading_pair)
-                        snapshot_timestamp: float = time.time()
-                        snapshot_msg: OrderBookMessage = BtcturkOrderBook.snapshot_message_from_exchange(
-                            snapshot,
-                            snapshot_timestamp,
-                            metadata={"trading_pair": trading_pair}
+                        order_book_message: OrderBookMessage = BtcturkOrderBook.snapshot_message_from_exchange(
+                            json_msg,
+                            time.time(),
+                            {"trading_pair": trading_pair}
                         )
-                        output.put_nowait(snapshot_msg)
+                        output.put_nowait(order_book_message)
                         self.logger().debug(f"Saved order book snapshot for {trading_pair}")
                     except asyncio.CancelledError:
                         raise
@@ -320,16 +318,20 @@ class BtcturkAPIOrderBookDataSource(OrderBookTrackerDataSource):
         while True:
             try:
                 ws: WSAssistant = await self._get_ws_assistant()
-                await ws.connect(ws_url=CONSTANTS.WSS_URL.format(self._domain),
+                await ws.connect(ws_url=CONSTANTS.WSS_URL,
                                  ping_timeout=CONSTANTS.WS_HEARTBEAT_TIME_INTERVAL)
                 await self._subscribe_channels(ws)
 
                 async for ws_response in ws.iter_messages():
                     data = ws_response.data
-                    if "result" in data:
+                    # raise Exception(data)
+                    if data[0] == 114 or data[0] == 991:
                         continue
-                    event_type = data.get("e")
-                    if event_type in [CONSTANTS.DIFF_EVENT_TYPE, CONSTANTS.TRADE_EVENT_TYPE]:
+                    if data[0] == 431 and data[1]["channel"] == "obdiff":
+                        # 432 message first sends 431
+                        continue
+                    event_type = data[1]["channel"]
+                    if event_type in [CONSTANTS.DIFF_EVENT_TYPE, CONSTANTS.TRADE_EVENT_TYPE, CONSTANTS.ORDERFULL_EVENT_TYPE]:
                         self._message_queue[event_type].put_nowait(data)
 
             except asyncio.CancelledError:
@@ -381,32 +383,33 @@ class BtcturkAPIOrderBookDataSource(OrderBookTrackerDataSource):
         :param ws: the websocket assistant used to connect to the exchange
         """
         try:
-            trade_params = []
-            depth_params = []
+            # orderbook_params = []
             for trading_pair in self._trading_pairs:
                 symbol = await self.exchange_symbol_associated_to_pair(
                     trading_pair=trading_pair,
-                    domain=self._domain,
                     api_factory=self._api_factory,
                     throttler=self._throttler)
-                trade_params.append(f"{symbol.lower()}@trade")
-                depth_params.append(f"{symbol.lower()}@depth@100ms")
-            payload = {
-                "method": "SUBSCRIBE",
-                "params": trade_params,
-                "id": 1
-            }
-            subscribe_trade_request: WSRequest = WSRequest(payload=payload)
+                payload = [151, {
+                    "type": 151,
+                    "event": symbol,
+                    "join": True,
+                    "channel": "trade"
+                },
+                ]
+                subscribe_trade_request: WSRequest = WSRequest(payload=payload)
+            # raise Exception(symbol)
+            # raise Exception(subscribe_trade_request)
+                payload = [151, {
+                    "type": 151,
+                    "event": symbol,
+                    "join": True,
+                    "channel": "obdiff"
+                },
+                ]
+                subscribe_orderbook_request: WSRequest = WSRequest(payload=payload)
 
-            payload = {
-                "method": "SUBSCRIBE",
-                "params": depth_params,
-                "id": 2
-            }
-            subscribe_orderbook_request: WSRequest = WSRequest(payload=payload)
-
-            await ws.send(subscribe_trade_request)
-            await ws.send(subscribe_orderbook_request)
+                await ws.send(subscribe_trade_request)
+                await ws.send(subscribe_orderbook_request)
 
             self.logger().info("Subscribed to public order book and trade channels...")
         except asyncio.CancelledError:
