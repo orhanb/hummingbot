@@ -739,9 +739,11 @@ class BtcturkExchange(ExchangeBase):
         # TODO thinking about how to get user private stream to _iter_user_event_queue()
         async for event_message in self._iter_user_event_queue():
             try:
-                event_type = event_message.get("e")
+                # event_type is channel number for btcturk
+                event_type = event_message[0]
                 # Refer to https://github.com/binance-exchange/binance-official-api-docs/blob/master/user-data-stream.md
                 # As per the order update section in Binance the ID of the order being cancelled is under the "C" key
+                # https://binance-docs.github.io/apidocs/spot/en/#listen-key-isolated-margin
                 if event_type == "executionReport":
                     execution_type = event_message.get("x")
                     if execution_type != "CANCELED":
@@ -776,7 +778,7 @@ class BtcturkExchange(ExchangeBase):
                             exchange_order_id=str(event_message["i"]),
                         )
                         self._order_tracker.process_order_update(order_update=order_update)
-
+                # btcturk not providing any details about 201-BalanceUpdate message
                 elif event_type == "outboundAccountPosition":
                     balances = event_message["B"]
                     for balance_entry in balances:
