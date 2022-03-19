@@ -907,19 +907,19 @@ class BtcturkExchange(ExchangeBase):
 
         tracked_orders: List[InFlightOrder] = list(self.in_flight_orders.values())
         if current_tick > last_tick and len(tracked_orders) > 0:
-
+            # Only pairSymbol needed for orders, we cant use origClientOrderId; so each result response
+            # contains multiple open orders.
             tasks = [
                 self._api_request(
                     method=RESTMethod.GET,
-                    path_url=CONSTANTS.ORDER_PATH_URL,
+                    path_url=CONSTANTS.ORDER_PATH,
                     params={
-                        "symbol": await BtcturkAPIOrderBookDataSource.exchange_symbol_associated_to_pair(
+                        "pairSymbol": await BtcturkAPIOrderBookDataSource.exchange_symbol_associated_to_pair(
                             trading_pair=o.trading_pair,
-                            domain=self._domain,
                             api_factory=self._api_factory,
                             throttler=self._throttler,
                         ),
-                        "origClientOrderId": o.client_order_id,
+                        # "origClientOrderId": o.client_order_id,
                     },
                     is_auth_required=True,
                 )
@@ -927,6 +927,7 @@ class BtcturkExchange(ExchangeBase):
             ]
             self.logger().debug(f"Polling for order status updates of {len(tasks)} orders.")
             results = await safe_gather(*tasks, return_exceptions=True)
+            # TODO need to manipulate results
             for order_update, tracked_order in zip(results, tracked_orders):
                 client_order_id = tracked_order.client_order_id
 
