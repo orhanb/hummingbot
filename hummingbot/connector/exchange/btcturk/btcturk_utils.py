@@ -69,6 +69,16 @@ def convert_from_exchange_trading_pair(pair: str) -> str:
     return f"{base}-{quote}".upper()
 
 
+def convert_from_exchange_trading_pair_to_base_quote(pair: str) -> str:
+    if pair[-4:] == "USDT":
+        base, _ = pair[:-4], pair[-4:]
+    elif pair[-3:] == "TRY":
+        base, _ = pair[:-3], pair[-3:]
+    else:
+        return None
+    return base.upper()
+
+
 def convert_to_exchange_trading_pair(hb_trading_pair: str) -> str:
     return hb_trading_pair.replace("-", "")
 

@@ -821,19 +821,21 @@ class BtcturkExchange(ExchangeBase):
             order_by_exchange_id_map = {}
             for order in self._order_tracker.all_orders.values():
                 order_by_exchange_id_map[order.exchange_order_id] = order
-
+            # TODO
             tasks = []
             trading_pairs = self._order_book_tracker._trading_pairs
             for trading_pair in trading_pairs:
+                symbol = await BtcturkAPIOrderBookDataSource.exchange_symbol_associated_to_pair(
+                    trading_pair=trading_pair,
+                    api_factory=self._api_factory,
+                    throttler=self._throttler,
+                )
+                base_symbol = btcturk_utils.convert_from_exchange_trading_pair_to_base_quote(symbol)
                 params = {
-                    "symbol": await BtcturkAPIOrderBookDataSource.exchange_symbol_associated_to_pair(
-                        trading_pair=trading_pair,
-                        api_factory=self._api_factory,
-                        throttler=self._throttler,
-                    )
+                    "symbol": base_symbol
                 }
                 if self._last_poll_timestamp > 0:
-                    params["startTime"] = query_time
+                    params["startDate"] = query_time
                 tasks.append(
                     self._api_request(
                         method=RESTMethod.GET,
@@ -846,7 +848,7 @@ class BtcturkExchange(ExchangeBase):
             self.logger().debug(f"Polling for order fills of {len(tasks)} trading pairs.")
             results = await safe_gather(*tasks, return_exceptions=True)
 
-            for trades, trading_pair in zip(results, trading_pairs):
+            for trades, trading_pair in zip(results["data"], trading_pairs):
 
                 if isinstance(trades, Exception):
                     self.logger().network(
@@ -854,45 +856,46 @@ class BtcturkExchange(ExchangeBase):
                         app_warning_msg=f"Failed to fetch trade update for {trading_pair}.",
                     )
                     continue
+                # TODO response object quite different from binance. numeratorSymbol etc.
                 for trade in trades:
-                    exchange_order_id = str(trade["orderId"])
+                    exchange_order_id = str(trade["data"]["orderId"])
                     if exchange_order_id in order_by_exchange_id_map:
                         # This is a fill for a tracked order
                         tracked_order = order_by_exchange_id_map[exchange_order_id]
                         trade_update = TradeUpdate(
-                            trade_id=str(trade["id"]),
+                            # trade_id=str(trade["id"]),
                             client_order_id=tracked_order.client_order_id,
                             exchange_order_id=exchange_order_id,
                             trading_pair=trading_pair,
-                            fee_asset=trade["commissionAsset"],
-                            fee_paid=Decimal(trade["commission"]),
-                            fill_base_amount=Decimal(trade["qty"]),
-                            fill_quote_amount=Decimal(trade["quoteQty"]),
-                            fill_price=Decimal(trade["price"]),
-                            fill_timestamp=int(trade["time"]),
+                            fee_asset=trade["data"]["denominatorSymbol"],
+                            fee_paid=abs(Decimal(trade["data"]["fee"]) + Decimal(trade["data"]["tax"])),
+                            fill_base_amount=Decimal(trade["data"]["amount"]),
+                            # fill_quote_amount=Decimal(trade["quoteQty"]),
+                            # fill_price=Decimal(trade["price"]),
+                            fill_timestamp=int(trade["data"]["timestamp"]),
                         )
                         self._order_tracker.process_trade_update(trade_update)
-                    elif self.is_confirmed_new_order_filled_event(str(trade["id"]), exchange_order_id, trading_pair):
+                    elif self.is_confirmed_new_order_filled_event(str(trade["data"]["id"]), exchange_order_id, trading_pair):
                         # This is a fill of an order registered in the DB but not tracked any more
                         self._current_trade_fills.add(
                             TradeFillOrderDetails(
-                                market=self.display_name, exchange_trade_id=str(trade["id"]), symbol=trading_pair
+                                market=self.display_name, exchange_trade_id=str(trade["data"]["id"]), symbol=trading_pair
                             )
                         )
                         self.trigger_event(
                             MarketEvent.OrderFilled,
                             OrderFilledEvent(
-                                timestamp=float(trade["time"]) * 1e-3,
-                                order_id=self._exchange_order_ids.get(str(trade["orderId"]), None),
+                                timestamp=float(trade["data"]["time"]) * 1e-3,
+                                order_id=self._exchange_order_ids.get(str(trade["data"]["orderId"]), None),
                                 trading_pair=trading_pair,
-                                trade_type=TradeType.BUY if trade["isBuyer"] else TradeType.SELL,
-                                order_type=OrderType.LIMIT_MAKER if trade["isMaker"] else OrderType.LIMIT,
-                                price=Decimal(trade["price"]),
+                                trade_type=TradeType.SELL if trade["data"]["orderType"] == "sell" else TradeType.BUY,
+                                # order_type=OrderType.LIMIT_MAKER if trade["isMaker"] else OrderType.LIMIT,
+                                # price=Decimal(trade["price"]),
                                 amount=Decimal(trade["qty"]),
                                 trade_fee=DeductedFromReturnsTradeFee(
-                                    flat_fees=[TokenAmount(trade["commissionAsset"], Decimal(trade["commission"]))]
+                                    flat_fees=[TokenAmount(fee_asset=trade["data"]["denominatorSymbol"]), abs(Decimal(trade["data"]["fee"]) + Decimal(trade["data"]["tax"]))]
                                 ),
-                                exchange_trade_id=str(trade["id"]),
+                                exchange_trade_id=str(trade["data"]["id"]),
                             ),
                         )
                         self.logger().info(f"Recreating missing trade in TradeFill: {trade}")
