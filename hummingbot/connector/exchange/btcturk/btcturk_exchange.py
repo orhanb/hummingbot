@@ -94,7 +94,7 @@ class BtcturkExchange(ExchangeBase):
         self._user_stream_event_listener_task = None
         self._trading_rules_polling_task = None
         self._last_poll_timestamp = 0
-        self._last_trades_poll_binance_timestamp = 0
+        self._last_trades_poll_btcturk_timestamp = 0
         self._order_tracker: ClientOrderTracker = ClientOrderTracker(connector=self)
 
     @classmethod
@@ -816,8 +816,8 @@ class BtcturkExchange(ExchangeBase):
         if long_interval_current_tick > long_interval_last_tick or (
             self.in_flight_orders and small_interval_current_tick > small_interval_last_tick
         ):
-            query_time = int(self._last_trades_poll_binance_timestamp * 1e3)
-            self._last_trades_poll_binance_timestamp = self._btcturk_time_synchronizer.time()
+            query_time = int(self._last_trades_poll_btcturk_timestamp * 1e3)
+            self._last_trades_poll_btcturk_timestamp = self._btcturk_time_synchronizer.time()
             order_by_exchange_id_map = {}
             for order in self._order_tracker.all_orders.values():
                 order_by_exchange_id_map[order.exchange_order_id] = order
@@ -828,7 +828,6 @@ class BtcturkExchange(ExchangeBase):
                 params = {
                     "symbol": await BtcturkAPIOrderBookDataSource.exchange_symbol_associated_to_pair(
                         trading_pair=trading_pair,
-                        domain=self._domain,
                         api_factory=self._api_factory,
                         throttler=self._throttler,
                     )
@@ -912,7 +911,7 @@ class BtcturkExchange(ExchangeBase):
             tasks = [
                 self._api_request(
                     method=RESTMethod.GET,
-                    path_url=CONSTANTS.ORDER_PATH,
+                    path_url=CONSTANTS.OPEN_ORDER_PATH_URL,
                     params={
                         "pairSymbol": await BtcturkAPIOrderBookDataSource.exchange_symbol_associated_to_pair(
                             trading_pair=o.trading_pair,
