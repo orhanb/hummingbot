@@ -506,7 +506,7 @@ class BtcturkExchange(ExchangeBase):
         order_result = None
         amount_str = f"{amount:f}"
         price_str = f"{price:f}"
-        type_str = BtcturkExchange.binance_order_type(order_type)
+        type_str = BtcturkExchange.btcturk_order_type(order_type)
         side_str = CONSTANTS.SIDE_BUY if trade_type is TradeType.BUY else CONSTANTS.SIDE_SELL
         symbol = await BtcturkAPIOrderBookDataSource.exchange_symbol_associated_to_pair(
             trading_pair=trading_pair, api_factory=self._api_factory, throttler=self._throttler
@@ -564,6 +564,7 @@ class BtcturkExchange(ExchangeBase):
         tracked_order = self._order_tracker.fetch_tracked_order(order_id)
         if tracked_order is not None:
             try:
+                # BTCTURK only need id to cancel order
                 # symbol = await BtcturkAPIOrderBookDataSource.exchange_symbol_associated_to_pair(
                 #     trading_pair=trading_pair,
                 #     api_factory=self._api_factory,
@@ -750,23 +751,25 @@ class BtcturkExchange(ExchangeBase):
                 # User related channels in ws:
                 # 201 = BalanceUpdate, 441 = Order Executed, 451 = OrderReceived
                 # 452 = OrderDelete, 453 = OrderUpdate
-                if event_type in [441, 451, 452, 453]:
-                    client_order_id = event_message[1].get("id", None)
+                if event_type in [451, 452, 453]:
+                    client_order_id = event_message[1].get("newOrderClientId", None)
                 # Partial filled order issue needs to be solved
-                if event_type == 441:
+                elif event_type == 441:
+                    client_order_id = event_message[1].get("clientId", None)
                     tracked_order = self._order_tracker.fetch_order(client_order_id=client_order_id)
+                    # btcturk only provides exchange order id, not trade_id
                     if tracked_order is not None:
                         trade_update = TradeUpdate(
-                            trade_id=str(event_message["t"]),
+                            trade_id=str(event_message[1]["id"]),
                             client_order_id=client_order_id,
-                            exchange_order_id=str(event_message["i"]),
+                            exchange_order_id=str(event_message[1]["id"]),
                             trading_pair=tracked_order.trading_pair,
-                            fee_asset=event_message["N"],
-                            fee_paid=Decimal(event_message["n"]),
-                            fill_base_amount=Decimal(event_message["l"]),
-                            fill_quote_amount=Decimal(event_message["l"]) * Decimal(event_message["L"]),
-                            fill_price=Decimal(event_message["L"]),
-                            fill_timestamp=int(event_message["T"]),
+                            # fee_asset=event_message["N"],
+                            # fee_paid=Decimal(event_message["n"]),
+                            fill_base_amount=Decimal(event_message[1]["amount"]),
+                            fill_quote_amount=Decimal(event_message[1]["amount"]) * Decimal(event_message[1]["price"]),
+                            fill_price=Decimal(event_message[1]["price"]),
+                            # fill_timestamp=int(event_message["T"]),
                         )
                         self._order_tracker.process_trade_update(trade_update)
 
@@ -814,7 +817,7 @@ class BtcturkExchange(ExchangeBase):
             self.in_flight_orders and small_interval_current_tick > small_interval_last_tick
         ):
             query_time = int(self._last_trades_poll_binance_timestamp * 1e3)
-            self._last_trades_poll_binance_timestamp = self._binance_time_synchronizer.time()
+            self._last_trades_poll_binance_timestamp = self._btcturk_time_synchronizer.time()
             order_by_exchange_id_map = {}
             for order in self._order_tracker.all_orders.values():
                 order_by_exchange_id_map[order.exchange_order_id] = order
@@ -1007,13 +1010,13 @@ class BtcturkExchange(ExchangeBase):
 
     async def _update_time_synchronizer(self):
         try:
-            await self._binance_time_synchronizer.update_server_time_offset_with_time_provider(
+            await self._btcturk_time_synchronizer.update_server_time_offset_with_time_provider(
                 time_provider=self._get_current_server_time()
             )
         except asyncio.CancelledError:
             raise
         except Exception:
-            self.logger().exception("Error requesting time from Binance server")
+            self.logger().exception("Error requesting time from Btcturk server")
             raise
 
     async def _api_request(
@@ -1048,7 +1051,7 @@ class BtcturkExchange(ExchangeBase):
                 raise IOError(f"Error parsing data from {response}.")
 
             if "code" in parsed_response and "msg" in parsed_response:
-                raise IOError(f"The request to Binance failed. Error: {parsed_response}. Request: {request}")
+                raise IOError(f"The request to Btcturk failed. Error: {parsed_response}. Request: {request}")
 
         return parsed_response
 
