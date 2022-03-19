@@ -162,7 +162,7 @@ class BtcturkExchange(ExchangeBase):
         return all(self.status_dict.values())
 
     @staticmethod
-    def binance_order_type(order_type: OrderType) -> str:
+    def btcturk_order_type(order_type: OrderType) -> str:
         return order_type.name.upper()
 
     @staticmethod
@@ -509,31 +509,31 @@ class BtcturkExchange(ExchangeBase):
         type_str = BtcturkExchange.binance_order_type(order_type)
         side_str = CONSTANTS.SIDE_BUY if trade_type is TradeType.BUY else CONSTANTS.SIDE_SELL
         symbol = await BtcturkAPIOrderBookDataSource.exchange_symbol_associated_to_pair(
-            trading_pair=trading_pair, domain=self._domain, api_factory=self._api_factory, throttler=self._throttler
+            trading_pair=trading_pair, api_factory=self._api_factory, throttler=self._throttler
         )
         api_params = {
-            "symbol": symbol,
-            "side": side_str,
+            "pairSymbol": symbol,
+            "orderType": side_str,
             "quantity": amount_str,
-            "type": type_str,
+            "orderMethod": type_str,
             "newClientOrderId": order_id,
             "price": price_str,
         }
-        if order_type == OrderType.LIMIT:
-            api_params["timeInForce"] = CONSTANTS.TIME_IN_FORCE_GTC
+        # if order_type == OrderType.LIMIT:
+        #     api_params["timeInForce"] = CONSTANTS.TIME_IN_FORCE_GTC
 
         try:
             order_result = await self._api_request(
-                method=RESTMethod.POST, path_url=CONSTANTS.ORDER_PATH_URL, data=api_params, is_auth_required=True
+                method=RESTMethod.POST, path_url=CONSTANTS.ORDER_PATH, data=api_params, is_auth_required=True
             )
 
-            exchange_order_id = str(order_result["orderId"])
+            exchange_order_id = str(order_result["data"]["id"])
 
             order_update: OrderUpdate = OrderUpdate(
                 client_order_id=order_id,
                 exchange_order_id=exchange_order_id,
                 trading_pair=trading_pair,
-                update_timestamp=int(order_result["transactTime"]),
+                update_timestamp=int(order_result["datetime"]),
                 new_state=OrderState.OPEN,
             )
             self._order_tracker.process_order_update(order_update)
@@ -542,10 +542,11 @@ class BtcturkExchange(ExchangeBase):
             raise
         except Exception as e:
             self.logger().network(
-                f"Error submitting {side_str} {type_str} order to Binance for " f"{amount} {trading_pair} " f"{price}.",
+                f"Error submitting {side_str} {type_str} order to Btcturk for " f"{amount} {trading_pair} " f"{price}.",
                 exc_info=True,
                 app_warning_msg=str(e),
             )
+            # Dont understand why they multiple current_timestam 1e3
             order_update: OrderUpdate = OrderUpdate(
                 client_order_id=order_id,
                 trading_pair=trading_pair,

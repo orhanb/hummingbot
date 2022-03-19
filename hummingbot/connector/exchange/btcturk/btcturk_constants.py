@@ -31,8 +31,6 @@ ORDER_PATH = "/order"
 # BINANCE_USER_STREAM_PATH_URL = "/userDataStream"
 WS_HEARTBEAT_TIME_INTERVAL = 30
 
-# Binance params
-
 SIDE_BUY = "buy"
 SIDE_SELL = "sell"
 
