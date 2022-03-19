@@ -31,14 +31,12 @@ class BtcturkAPIUserStreamDataSource(UserStreamTrackerDataSource):
 
     def __init__(self,
                  auth: BtcturkAuth,
-                 domain: str = "com",
                  api_factory: Optional[WebAssistantsFactory] = None,
                  throttler: Optional[AsyncThrottler] = None):
         super().__init__()
         self._auth: BtcturkAuth = auth
         self._current_listen_key = None
         self._last_recv_time: float = 0
-        self._domain = domain
         self._throttler = throttler or self._get_throttler_instance()
         self._api_factory = api_factory or build_api_factory()
         self._rest_assistant: Optional[RESTAssistant] = None
@@ -82,7 +80,7 @@ class BtcturkAPIUserStreamDataSource(UserStreamTrackerDataSource):
                     data = ws_response.data
 
                     if len(data) > 0:
-                        if data[0] == 112:
+                        if data[0] == 114:
                             login_result = data[1]["Ok"]
                             if not login_result:
                                 self.logger().error("Login failed", data)
@@ -90,9 +88,11 @@ class BtcturkAPIUserStreamDataSource(UserStreamTrackerDataSource):
                             else:
                                 self._ws_auth_event.set()
 
-                        # if (data[0] == 201) or (data[0] == 441) or (data[0] == 451) or (data[0] == 452) or (data[0] == 453):
-                        if data[0] == 441:
-                            output.put_nowait(data[1])
+                        if (data[0] == 201) or (data[0] == 441) or (data[0] == 451) or (data[0] == 452) or (data[0] == 453):
+                            # User related channels in ws: 201 = BalanceUpdate, 441 = Order Executed, 451 = OrderReceived
+                            # 452 = OrderDelete, 453 = OrderUpdate
+                            # if data[0] == 441:
+                            output.put_nowait(data)
 
             except asyncio.CancelledError:
                 raise
