@@ -749,29 +749,25 @@ class BtcturkExchange(ExchangeBase):
                 # User related channels in ws:
                 # 201 = BalanceUpdate, 441 = Order Executed, 451 = OrderReceived
                 # 452 = OrderDelete, 453 = OrderUpdate
-                if event_type == "executionReport":
-                    execution_type = event_message.get("x")
-                    if execution_type != "CANCELED":
-                        client_order_id = event_message.get("c")
-                    else:
-                        client_order_id = event_message.get("C")
-
-                    if execution_type == "TRADE":
-                        tracked_order = self._order_tracker.fetch_order(client_order_id=client_order_id)
-                        if tracked_order is not None:
-                            trade_update = TradeUpdate(
-                                trade_id=str(event_message["t"]),
-                                client_order_id=client_order_id,
-                                exchange_order_id=str(event_message["i"]),
-                                trading_pair=tracked_order.trading_pair,
-                                fee_asset=event_message["N"],
-                                fee_paid=Decimal(event_message["n"]),
-                                fill_base_amount=Decimal(event_message["l"]),
-                                fill_quote_amount=Decimal(event_message["l"]) * Decimal(event_message["L"]),
-                                fill_price=Decimal(event_message["L"]),
-                                fill_timestamp=int(event_message["T"]),
-                            )
-                            self._order_tracker.process_trade_update(trade_update)
+                if event_type in [441, 451, 452, 453]:
+                    client_order_id = event_message[1].get("id", None)
+                # Partial filled order issue needs to be solved
+                if event_type == 441:
+                    tracked_order = self._order_tracker.fetch_order(client_order_id=client_order_id)
+                    if tracked_order is not None:
+                        trade_update = TradeUpdate(
+                            trade_id=str(event_message["t"]),
+                            client_order_id=client_order_id,
+                            exchange_order_id=str(event_message["i"]),
+                            trading_pair=tracked_order.trading_pair,
+                            fee_asset=event_message["N"],
+                            fee_paid=Decimal(event_message["n"]),
+                            fill_base_amount=Decimal(event_message["l"]),
+                            fill_quote_amount=Decimal(event_message["l"]) * Decimal(event_message["L"]),
+                            fill_price=Decimal(event_message["L"]),
+                            fill_timestamp=int(event_message["T"]),
+                        )
+                        self._order_tracker.process_trade_update(trade_update)
 
                     tracked_order = self.in_flight_orders.get(client_order_id)
                     if tracked_order is not None:
@@ -784,14 +780,14 @@ class BtcturkExchange(ExchangeBase):
                         )
                         self._order_tracker.process_order_update(order_update=order_update)
                 # btcturk not providing any details about 201-BalanceUpdate message
-                elif event_type == "outboundAccountPosition":
-                    balances = event_message["B"]
-                    for balance_entry in balances:
-                        asset_name = balance_entry["a"]
-                        free_balance = Decimal(balance_entry["f"])
-                        total_balance = Decimal(balance_entry["f"]) + Decimal(balance_entry["l"])
-                        self._account_available_balances[asset_name] = free_balance
-                        self._account_balances[asset_name] = total_balance
+                # elif event_type == "outboundAccountPosition":
+                #     balances = event_message["B"]
+                #     for balance_entry in balances:
+                #         asset_name = balance_entry["a"]
+                #         free_balance = Decimal(balance_entry["f"])
+                #         total_balance = Decimal(balance_entry["f"]) + Decimal(balance_entry["l"])
+                #         self._account_available_balances[asset_name] = free_balance
+                #         self._account_balances[asset_name] = total_balance
 
             except asyncio.CancelledError:
                 raise
