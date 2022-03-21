@@ -627,7 +627,7 @@ class BtcturkExchange(ExchangeBase):
                 self.logger().network(
                     "Unexpected error while fetching account updates.",
                     exc_info=True,
-                    app_warning_msg="Could not fetch account updates from Binance. "
+                    app_warning_msg="Could not fetch account updates from Btcturk. "
                     "Check API key and network connection.",
                 )
                 await asyncio.sleep(0.5)
@@ -768,17 +768,19 @@ class BtcturkExchange(ExchangeBase):
                     if event_message[1]["amount"] > 0:
                         filled = True
                     if tracked_order is not None:
+                        # timestamp updated
+                        quote_ccy = btcturk_utils.convert_from_exchange_trading_pair_to_quote_ccy(tracked_order.trading_pair)
                         trade_update = TradeUpdate(
                             trade_id=str(event_message[1]["id"]),
                             client_order_id=client_order_id,
                             exchange_order_id=str(event_message[1]["id"]),
                             trading_pair=tracked_order.trading_pair,
-                            # fee_asset=event_message["N"],
-                            # fee_paid=Decimal(event_message["n"]),
+                            fee_asset=quote_ccy,
+                            fee_paid=Decimal(event_message[1]["amount"]) * Decimal(event_message[1]["price"]) * btcturk_utils.DEFAULT_FEES[0],
                             fill_base_amount=Decimal(event_message[1]["amount"]),
                             fill_quote_amount=Decimal(event_message[1]["amount"]) * Decimal(event_message[1]["price"]),
                             fill_price=Decimal(event_message[1]["price"]),
-                            # fill_timestamp=int(event_message["T"]),
+                            fill_timestamp=int(self.current_timestamp * 1e3),
                         )
                         self._order_tracker.process_trade_update(trade_update)
 
@@ -789,6 +791,7 @@ class BtcturkExchange(ExchangeBase):
                     new_state = old_state
                     if filled:  # This already implies event type is 441
                         new_state = OrderState.PARTIALLY_FILLED
+                        # TODO
                         if math.isclose(event_message[1]["amount"], tracked_order.amount - tracked_order.executed_amount_base):
                             new_state = OrderState.FILLED
                     elif event_type == 451:
@@ -874,7 +877,7 @@ class BtcturkExchange(ExchangeBase):
             self.logger().debug(f"Polling for order fills of {len(tasks)} trading pairs.")
             results = await safe_gather(*tasks, return_exceptions=True)
 
-            for trades, trading_pair in zip(results["data"], trading_pairs):
+            for trades, trading_pair in zip(results, trading_pairs):
 
                 if isinstance(trades, Exception):
                     self.logger().network(
@@ -883,8 +886,8 @@ class BtcturkExchange(ExchangeBase):
                     )
                     continue
                 # TODO response object quite different from binance. numeratorSymbol etc.
-                for trade in trades:
-                    exchange_order_id = str(trade["data"]["orderId"])
+                for trade in trades["data"]:
+                    exchange_order_id = str(trade["orderId"])
                     if exchange_order_id in order_by_exchange_id_map:
                         # This is a fill for a tracked order
                         tracked_order = order_by_exchange_id_map[exchange_order_id]
@@ -893,35 +896,35 @@ class BtcturkExchange(ExchangeBase):
                             client_order_id=tracked_order.client_order_id,
                             exchange_order_id=exchange_order_id,
                             trading_pair=trading_pair,
-                            fee_asset=trade["data"]["denominatorSymbol"],
-                            fee_paid=abs(Decimal(trade["data"]["fee"]) + Decimal(trade["data"]["tax"])),
-                            fill_base_amount=Decimal(trade["data"]["amount"]),
+                            fee_asset=trade["denominatorSymbol"],
+                            fee_paid=abs(Decimal(trade["fee"]) + Decimal(trade["tax"])),
+                            fill_base_amount=Decimal(trade["amount"]),
                             # fill_quote_amount=Decimal(trade["quoteQty"]),
-                            # fill_price=Decimal(trade["price"]),
-                            fill_timestamp=int(trade["data"]["timestamp"]),
+                            fill_price=Decimal(trade["price"]),
+                            fill_timestamp=int(trade["timestamp"]),
                         )
                         self._order_tracker.process_trade_update(trade_update)
-                    elif self.is_confirmed_new_order_filled_event(str(trade["data"]["id"]), exchange_order_id, trading_pair):
+                    elif self.is_confirmed_new_order_filled_event(str(trade["id"]), exchange_order_id, trading_pair):
                         # This is a fill of an order registered in the DB but not tracked any more
                         self._current_trade_fills.add(
                             TradeFillOrderDetails(
-                                market=self.display_name, exchange_trade_id=str(trade["data"]["id"]), symbol=trading_pair
+                                market=self.display_name, exchange_trade_id=str(trade["id"]), symbol=trading_pair
                             )
                         )
                         self.trigger_event(
                             MarketEvent.OrderFilled,
                             OrderFilledEvent(
-                                timestamp=float(trade["data"]["time"]) * 1e-3,
-                                order_id=self._exchange_order_ids.get(str(trade["data"]["orderId"]), None),
+                                timestamp=float(trade["time"]) * 1e-3,
+                                order_id=self._exchange_order_ids.get(str(trade["orderId"]), None),
                                 trading_pair=trading_pair,
                                 trade_type=TradeType.SELL if trade["data"]["orderType"] == "sell" else TradeType.BUY,
                                 # order_type=OrderType.LIMIT_MAKER if trade["isMaker"] else OrderType.LIMIT,
                                 # price=Decimal(trade["price"]),
-                                amount=Decimal(trade["qty"]),
+                                amount=Decimal(trade["amount"]),
                                 trade_fee=DeductedFromReturnsTradeFee(
-                                    flat_fees=[TokenAmount(fee_asset=trade["data"]["denominatorSymbol"]), abs(Decimal(trade["data"]["fee"]) + Decimal(trade["data"]["tax"]))]
+                                    flat_fees=[TokenAmount(fee_asset=trade["denominatorSymbol"]), abs(Decimal(trade["fee"]) + Decimal(trade["tax"]))]
                                 ),
-                                exchange_trade_id=str(trade["data"]["id"]),
+                                exchange_trade_id=str(trade["id"]),
                             ),
                         )
                         self.logger().info(f"Recreating missing trade in TradeFill: {trade}")
@@ -956,7 +959,12 @@ class BtcturkExchange(ExchangeBase):
             self.logger().debug(f"Polling for order status updates of {len(tasks)} orders.")
             results = await safe_gather(*tasks, return_exceptions=True)
             # TODO need to manipulate results
-            for order_update, tracked_order in zip(results, tracked_orders):
+            updated_results = []
+            for i in results["data"]:
+                for j in i:
+                    updated_results.append(j)
+
+            for order_update, tracked_order in zip(updated_results, tracked_orders):
                 client_order_id = tracked_order.client_order_id
 
                 # If the order has already been cancelled or has failed do nothing
@@ -988,11 +996,14 @@ class BtcturkExchange(ExchangeBase):
 
                 else:
                     # Update order execution status
-                    new_state = CONSTANTS.ORDER_STATE[order_update["status"]]
-
+                    # new_state = CONSTANTS.ORDER_STATE[order_update["status"]]
+                    if order_update["status"] == "Untouched":
+                        new_state = CONSTANTS.ORDER_STATE["NEW"]
+                    elif order_update["status"] == "Partial":
+                        new_state = CONSTANTS.ORDER_STATE["PARTIALLY_FILLED"]
                     update = OrderUpdate(
                         client_order_id=client_order_id,
-                        exchange_order_id=str(order_update["orderId"]),
+                        exchange_order_id=str(order_update["orderClientId"]),
                         trading_pair=tracked_order.trading_pair,
                         update_timestamp=int(order_update["updateTime"]),
                         new_state=new_state,

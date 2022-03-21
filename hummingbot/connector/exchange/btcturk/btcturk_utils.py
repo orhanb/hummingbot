@@ -79,6 +79,16 @@ def convert_from_exchange_trading_pair_to_base_quote(pair: str) -> str:
     return base.upper()
 
 
+def convert_from_exchange_trading_pair_to_quote_ccy(pair: str) -> str:
+    if pair[-4:] == "USDT":
+        _, quote = pair[:-4], pair[-4:]
+    elif pair[-3:] == "TRY":
+        _, quote = pair[:-3], pair[-3:]
+    else:
+        return None
+    return quote.upper()
+
+
 def convert_to_exchange_trading_pair(hb_trading_pair: str) -> str:
     return hb_trading_pair.replace("-", "")
 
