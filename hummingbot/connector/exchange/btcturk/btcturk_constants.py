@@ -51,15 +51,16 @@ ONE_DAY = 86400
 MAX_REQUEST = 5000
 
 # Order States
+# TODO update it with BTCTURK
 ORDER_STATE = {
-    "PENDING": OrderState.PENDING_CREATE,
-    "NEW": OrderState.OPEN,
-    "FILLED": OrderState.FILLED,
+    "PENDING": OrderState.PENDING_CREATE,  # inflight
+    "NEW": OrderState.OPEN,  # 451 new order state
+    "FILLED": OrderState.FILLED,  #
     "PARTIALLY_FILLED": OrderState.PARTIALLY_FILLED,
     "PENDING_CANCEL": OrderState.OPEN,
-    "CANCELED": OrderState.CANCELLED,
-    "REJECTED": OrderState.FAILED,
-    "EXPIRED": OrderState.FAILED,
+    "CANCELED": OrderState.CANCELLED,  # 452 order delete
+    "REJECTED": OrderState.FAILED,  # 452, need to differentiate with cancelled
+    # "EXPIRED": OrderState.FAILED, # probably 452
 }
 
 # Websocket event types

@@ -758,6 +758,7 @@ class BtcturkExchange(ExchangeBase):
                     client_order_id = event_message[1].get("clientId", None)
                     tracked_order = self._order_tracker.fetch_order(client_order_id=client_order_id)
                     # btcturk only provides exchange order id, not trade_id
+                    # boolen flag for partial fill
                     if tracked_order is not None:
                         trade_update = TradeUpdate(
                             trade_id=str(event_message[1]["id"]),
@@ -773,16 +774,19 @@ class BtcturkExchange(ExchangeBase):
                         )
                         self._order_tracker.process_trade_update(trade_update)
 
-                    tracked_order = self.in_flight_orders.get(client_order_id)
-                    if tracked_order is not None:
-                        order_update = OrderUpdate(
-                            trading_pair=tracked_order.trading_pair,
-                            update_timestamp=int(event_message["E"]),
-                            new_state=CONSTANTS.ORDER_STATE[event_message["X"]],
-                            client_order_id=client_order_id,
-                            exchange_order_id=str(event_message["i"]),
-                        )
-                        self._order_tracker.process_order_update(order_update=order_update)
+                tracked_order = self.in_flight_orders.get(client_order_id)
+                if tracked_order is not None:
+                    # TODO
+                    order_update = OrderUpdate(
+                        trading_pair=tracked_order.trading_pair,
+                        # TODO timestamp btcturk timesync
+                        # update_timestamp=int(event_message["E"]),
+                        # TODO new_state
+                        # new_state=CONSTANTS.ORDER_STATE[event_message["X"]],
+                        client_order_id=client_order_id,
+                        exchange_order_id=str(event_message[1]["id"]),
+                    )
+                    self._order_tracker.process_order_update(order_update=order_update)
                 # btcturk not providing any details about 201-BalanceUpdate message
                 # elif event_type == "outboundAccountPosition":
                 #     balances = event_message["B"]
