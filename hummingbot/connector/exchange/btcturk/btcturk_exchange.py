@@ -183,7 +183,8 @@ class BtcturkExchange(ExchangeBase):
         self._order_book_tracker.start()
         self._trading_rules_polling_task = safe_ensure_future(self._trading_rules_polling_loop())
         if self._trading_required:
-            self._status_polling_task = safe_ensure_future(self._status_polling_loop())
+            # TODO later status polling every 30 mins
+            # self._status_polling_task = safe_ensure_future(self._status_polling_loop())
             self._user_stream_tracker_task = safe_ensure_future(self._user_stream_tracker.start())
             self._user_stream_event_listener_task = safe_ensure_future(self._user_stream_event_listener())
 
@@ -456,6 +457,8 @@ class BtcturkExchange(ExchangeBase):
         failed_cancellations = [CancellationResult(oid, False) for oid in order_id_set]
         return successful_cancellations + failed_cancellations
 
+    # TODO
+    # Rest awaits the results and updates the order status to OPEN
     async def _create_order(
         self,
         trade_type: TradeType,
@@ -555,6 +558,8 @@ class BtcturkExchange(ExchangeBase):
             )
             self._order_tracker.process_order_update(order_update)
 
+    # TODO
+    # Awaits the cancel request
     async def _execute_cancel(self, trading_pair: str, order_id: str):
         """
         Requests the exchange to cancel an active order
@@ -751,6 +756,7 @@ class BtcturkExchange(ExchangeBase):
                 # User related channels in ws:
                 # 201 = BalanceUpdate, 441 = Order Executed, 451 = OrderReceived
                 # 452 = OrderDelete, 453 = OrderUpdate
+                filled = False
                 if event_type in [451, 452, 453]:
                     client_order_id = event_message[1].get("newOrderClientId", None)
                 # Partial filled order issue needs to be solved
@@ -758,7 +764,8 @@ class BtcturkExchange(ExchangeBase):
                     client_order_id = event_message[1].get("clientId", None)
                     tracked_order = self._order_tracker.fetch_order(client_order_id=client_order_id)
                     # btcturk only provides exchange order id, not trade_id
-                    # boolen flag for partial fill
+                    if event_message[1]["amount"] > 0:
+                        filled = True
                     if tracked_order is not None:
                         trade_update = TradeUpdate(
                             trade_id=str(event_message[1]["id"]),
@@ -777,12 +784,25 @@ class BtcturkExchange(ExchangeBase):
                 tracked_order = self.in_flight_orders.get(client_order_id)
                 if tracked_order is not None:
                     # TODO
+                    old_state = tracked_order.current_state
+                    new_state = old_state
+                    if filled:  # This already implies event type is 441
+                        new_state = OrderState.PARTIALLY_FILLED
+                        # TODO differentiate between partial and filled
+                    elif event_type == 451:
+                        new_state = OrderState.OPEN
+                    elif event_type == 452:
+                        if old_state == OrderState.PENDING_CREATE:
+                            new_state = OrderState.FAILED
+                        else:
+                            new_state = OrderState.CANCELLED
+                    elif event_type == 453:
+                        new_state = old_state
+
                     order_update = OrderUpdate(
                         trading_pair=tracked_order.trading_pair,
-                        # TODO timestamp btcturk timesync
-                        # update_timestamp=int(event_message["E"]),
-                        # TODO new_state
-                        # new_state=CONSTANTS.ORDER_STATE[event_message["X"]],
+                        update_timestamp=int(self._btcturk_time_synchronizer.time()),
+                        new_state=new_state,
                         client_order_id=client_order_id,
                         exchange_order_id=str(event_message[1]["id"]),
                     )
