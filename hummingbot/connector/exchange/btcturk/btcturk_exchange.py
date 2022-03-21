@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import time
+import math
 
 from decimal import Decimal
 from typing import (
@@ -788,7 +789,8 @@ class BtcturkExchange(ExchangeBase):
                     new_state = old_state
                     if filled:  # This already implies event type is 441
                         new_state = OrderState.PARTIALLY_FILLED
-                        # TODO differentiate between partial and filled
+                        if math.isclose(event_message[1]["amount"], tracked_order.amount - tracked_order.executed_amount_base):
+                            new_state = OrderState.FILLED
                     elif event_type == 451:
                         new_state = OrderState.OPEN
                     elif event_type == 452:
