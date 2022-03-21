@@ -92,6 +92,7 @@ class BtcturkExchange(ExchangeBase):
         self._trade_fees = {}  # Dict[trading_pair:str, (maker_fee_percent:Decimal, taken_fee_percent:Decimal)]
         self._last_update_trade_fees_timestamp = 0
         self._status_polling_task = None
+        self._user_stream_tracker_task = None
         self._user_stream_event_listener_task = None
         self._trading_rules_polling_task = None
         self._last_poll_timestamp = 0
@@ -146,13 +147,22 @@ class BtcturkExchange(ExchangeBase):
         Returns a dictionary with the values of all the conditions that determine if the connector is ready to operate.
         The key of each entry is the condition name, and the value is True if condition is ready, False otherwise.
         """
-        return {
+        a = {
             "symbols_mapping_initialized": BtcturkAPIOrderBookDataSource.trading_pair_symbol_map_ready(
             ),
             "order_books_initialized": self._order_book_tracker.ready,
             "account_balance": len(self._account_balances) > 0 if self._trading_required else True,
             "trading_rule_initialized": len(self._trading_rules) > 0,
         }
+        IOError(a)
+        return a
+        # {
+        #     "symbols_mapping_initialized": BtcturkAPIOrderBookDataSource.trading_pair_symbol_map_ready(
+        #     ),
+        #     "order_books_initialized": self._order_book_tracker.ready,
+        #     "account_balance": len(self._account_balances) > 0 if self._trading_required else True,
+        #     "trading_rule_initialized": len(self._trading_rules) > 0,
+        # }
 
     @property
     def ready(self) -> bool:
@@ -183,6 +193,7 @@ class BtcturkExchange(ExchangeBase):
         """
         self._order_book_tracker.start()
         self._trading_rules_polling_task = safe_ensure_future(self._trading_rules_polling_loop())
+
         if self._trading_required:
             # TODO later status polling every 30 mins
             # self._status_polling_task = safe_ensure_future(self._status_polling_loop())
