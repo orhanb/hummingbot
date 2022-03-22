@@ -325,8 +325,10 @@ class BtcturkAPIOrderBookDataSource(OrderBookTrackerDataSource):
                 async for ws_response in ws.iter_messages():
                     data = ws_response.data
                     #  We need obdiff-432, trade-422
-                    if data[0] in [422, 431, 432]:
+                    if data[0] in [422, 432]:
                         event_type = data[1]["channel"]
+                    elif data[0] == 431:
+                        event_type = "order"
                     else:
                         continue
                     # if data[0] == 114 or data[0] == 991 or data[0] == 100 or data[0] == 421:

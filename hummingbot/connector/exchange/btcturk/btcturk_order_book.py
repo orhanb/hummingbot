@@ -1,4 +1,5 @@
 from typing import Dict, Optional, List
+from hummingbot.core.event.events import TradeType
 from hummingbot.core.data_type.order_book import OrderBook
 from hummingbot.core.data_type.order_book_message import (
     OrderBookMessage,
@@ -81,7 +82,7 @@ class BtcturkOrderBook(OrderBook):
         msg[1].update({
             "price": msg[1].get("P"),
             "amount": msg[1].get("A"),
-            "trade_type": ["buy" if msg[1].get("S") == 1 else "sell"]
+            "trade_type": float(TradeType.SELL.value) if msg["m"] == 0 else float(TradeType.BUY.value)
         })
         timestamp = float(msg[1]["D"]) * (1e-3)
         return BtcturkOrderBookMessage(
