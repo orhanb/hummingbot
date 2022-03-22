@@ -81,7 +81,7 @@ class BtcturkAPIUserStreamDataSource(UserStreamTrackerDataSource):
 
                     if len(data) > 0:
                         if data[0] == 114:
-                            login_result = data[1]["Ok"]
+                            login_result = data[1]["ok"]
                             if not login_result:
                                 self.logger().error("Login failed", data)
                                 break

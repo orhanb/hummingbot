@@ -324,13 +324,17 @@ class BtcturkAPIOrderBookDataSource(OrderBookTrackerDataSource):
 
                 async for ws_response in ws.iter_messages():
                     data = ws_response.data
-                    # raise Exception(data)
-                    if data[0] == 114 or data[0] == 991:
+                    #  We need obdiff-432, trade-422
+                    if data[0] in [422, 432]:
+                        event_type = data[1]["channel"]
+                    else:
                         continue
-                    if data[0] == 431 and data[1]["channel"] == "obdiff":
-                        # 432 message first sends 431
-                        continue
-                    event_type = data[1]["channel"]
+                    # if data[0] == 114 or data[0] == 991 or data[0] == 100 or data[0] == 421:
+                    #     continue
+                    # if data[0] == 431 and data[1]["channel"] == "obdiff":
+                    #     # 432 message first sends 431
+                    #     continue
+                    # event_type = data[1]["channel"]
                     if event_type in [CONSTANTS.DIFF_EVENT_TYPE, CONSTANTS.TRADE_EVENT_TYPE, CONSTANTS.ORDERFULL_EVENT_TYPE]:
                         self._message_queue[event_type].put_nowait(data)
 
@@ -397,8 +401,8 @@ class BtcturkAPIOrderBookDataSource(OrderBookTrackerDataSource):
                 },
                 ]
                 subscribe_trade_request: WSRequest = WSRequest(payload=payload)
-            # raise Exception(symbol)
-            # raise Exception(subscribe_trade_request)
+                # raise Exception(symbol)
+                # raise Exception(subscribe_trade_request)
                 payload = [151, {
                     "type": 151,
                     "event": symbol,
