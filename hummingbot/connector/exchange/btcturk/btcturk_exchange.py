@@ -1076,11 +1076,12 @@ class BtcturkExchange(ExchangeBase):
 
         if is_auth_required:
             url = btcturk_utils.private_rest_url(path_url)
-            headers = self._auth.header_for_authentication()
+            # headers = self._auth.header_for_authentication()
         else:
             url = btcturk_utils.public_rest_url(path_url)
         request = RESTRequest(
-            method=method, url=url, data=data, params=params, headers=headers, is_auth_required=is_auth_required
+            # method=method, url=url, data=data, params=params, headers=headers, is_auth_required=is_auth_required
+            method=method, url=url, data=data, params=params, is_auth_required=is_auth_required
         )
 
         async with self._throttler.execute_task(limit_id=path_url):

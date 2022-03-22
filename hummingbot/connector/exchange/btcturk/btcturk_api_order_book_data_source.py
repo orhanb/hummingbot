@@ -357,7 +357,7 @@ class BtcturkAPIOrderBookDataSource(OrderBookTrackerDataSource):
         """
         rest_assistant = await self._get_rest_assistant()
         params = {
-            "symbol": await self.exchange_symbol_associated_to_pair(
+            "pairSymbol": await self.exchange_symbol_associated_to_pair(
                 trading_pair=trading_pair,
                 api_factory=self._api_factory,
                 throttler=self._throttler)

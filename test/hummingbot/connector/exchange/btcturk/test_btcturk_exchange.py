@@ -548,81 +548,81 @@ class BtcturkExchangeTests(TestCase):
     #         asyncio.CancelledError,
     #         self.async_run_with_timeout, self.exchange._update_time_synchronizer())
 
-    @aioresponses()
-    def test_update_balances(self, mock_api):
-        url = btcturk_utils.private_rest_url(CONSTANTS.ACCOUNTS_PATH_URL)
-        regex_url = re.compile(f"^{url}".replace(".", r"\.").replace("?", r"\?"))
+    # @aioresponses()
+    # def test_update_balances(self, mock_api):
+    #     url = btcturk_utils.private_rest_url(CONSTANTS.ACCOUNTS_PATH_URL)
+    #     regex_url = re.compile(f"^{url}".replace(".", r"\.").replace("?", r"\?"))
 
-        response = {
-            "makerCommission": 15,
-            "takerCommission": 15,
-            "buyerCommission": 0,
-            "sellerCommission": 0,
-            "canTrade": True,
-            "canWithdraw": True,
-            "canDeposit": True,
-            "updateTime": 123456789,
-            "accountType": "SPOT",
-            "balances": [
-                {
-                    "asset": "BTC",
-                    "free": "10.0",
-                    "locked": "5.0"
-                },
-                {
-                    "asset": "LTC",
-                    "free": "2000",
-                    "locked": "0.00000000"
-                }
-            ],
-            "permissions": [
-                "SPOT"
-            ]
-        }
+    #     response = {
+    #         "makerCommission": 15,
+    #         "takerCommission": 15,
+    #         "buyerCommission": 0,
+    #         "sellerCommission": 0,
+    #         "canTrade": True,
+    #         "canWithdraw": True,
+    #         "canDeposit": True,
+    #         "updateTime": 123456789,
+    #         "accountType": "SPOT",
+    #         "balances": [
+    #             {
+    #                 "asset": "BTC",
+    #                 "free": "10.0",
+    #                 "locked": "5.0"
+    #             },
+    #             {
+    #                 "asset": "LTC",
+    #                 "free": "2000",
+    #                 "locked": "0.00000000"
+    #             }
+    #         ],
+    #         "permissions": [
+    #             "SPOT"
+    #         ]
+    #     }
 
-        mock_api.get(regex_url, body=json.dumps(response))
-        self.async_run_with_timeout(self.exchange._update_balances())
+    #     mock_api.get(regex_url, body=json.dumps(response))
+    #     self.async_run_with_timeout(self.exchange._update_balances())
 
-        available_balances = self.exchange.available_balances
-        total_balances = self.exchange.get_all_balances()
+    #     available_balances = self.exchange.available_balances
+    #     total_balances = self.exchange.get_all_balances()
 
-        self.assertEqual(Decimal("10"), available_balances["BTC"])
-        self.assertEqual(Decimal("2000"), available_balances["LTC"])
-        self.assertEqual(Decimal("15"), total_balances["BTC"])
-        self.assertEqual(Decimal("2000"), total_balances["LTC"])
+    #     self.assertEqual(Decimal("10"), available_balances["BTC"])
+    #     self.assertEqual(Decimal("2000"), available_balances["LTC"])
+    #     self.assertEqual(Decimal("15"), total_balances["BTC"])
+    #     self.assertEqual(Decimal("2000"), total_balances["LTC"])
 
-        response = {
-            "makerCommission": 15,
-            "takerCommission": 15,
-            "buyerCommission": 0,
-            "sellerCommission": 0,
-            "canTrade": True,
-            "canWithdraw": True,
-            "canDeposit": True,
-            "updateTime": 123456789,
-            "accountType": "SPOT",
-            "balances": [
-                {
-                    "asset": "BTC",
-                    "free": "10.0",
-                    "locked": "5.0"
-                },
-            ],
-            "permissions": [
-                "SPOT"
-            ]
-        }
+    #     response = {
+    #         "makerCommission": 15,
+    #         "takerCommission": 15,
+    #         "buyerCommission": 0,
+    #         "sellerCommission": 0,
+    #         "canTrade": True,
+    #         "canWithdraw": True,
+    #         "canDeposit": True,
+    #         "updateTime": 123456789,
+    #         "accountType": "SPOT",
+    #         "balances": [
+    #             {
+    #                 "asset": "BTC",
+    #                 "free": "10.0",
+    #                 "locked": "5.0"
+    #             },
+    #         ],
+    #         "permissions": [
+    #             "SPOT"
+    #         ]
+    #     }
 
-        mock_api.get(regex_url, body=json.dumps(response))
-        self.async_run_with_timeout(self.exchange._update_balances())
+    #     mock_api.get(regex_url, body=json.dumps(response))
+    #     self.async_run_with_timeout(self.exchange._update_balances())
 
-        available_balances = self.exchange.available_balances
-        total_balances = self.exchange.get_all_balances()
+    #     available_balances = self.exchange.available_balances
+    #     total_balances = self.exchange.get_all_balances()
 
-        self.assertNotIn("LTC", available_balances)
-        self.assertNotIn("LTC", total_balances)
-        self.assertEqual(Decimal("10"), available_balances["BTC"])
-        self.assertEqual(Decimal("15"), total_balances["BTC"])
+    #     self.assertNotIn("LTC", available_balances)
+    #     self.assertNotIn("LTC", total_balances)
+    #     self.assertEqual(Decimal("10"), available_balances["BTC"])
+    #     self.assertEqual(Decimal("15"), total_balances["BTC"])
 
     # @aioresponses()
     # def test_update_balances_logs_errors(self, mock_api):
@@ -1057,69 +1057,69 @@ class BtcturkExchangeTests(TestCase):
     #     self.assertEqual(order.order_type, failure_event.order_type)
     #     self.assertNotIn(order.client_order_id, self.exchange.in_flight_orders)
 
-    @aioresponses()
-    def test_update_trading_rules(self, mock_api):
-        url = btcturk_utils.private_rest_url(CONSTANTS.EXCHANGE_INFO_PATH_URL)
-        regex_url = re.compile(f"^{url}".replace(".", r"\.").replace("?", r"\?"))
+    # @aioresponses()
+    # def test_update_trading_rules(self, mock_api):
+    #     url = btcturk_utils.private_rest_url(CONSTANTS.EXCHANGE_INFO_PATH_URL)
+    #     regex_url = re.compile(f"^{url}".replace(".", r"\.").replace("?", r"\?"))
 
-        order_status = {
-            "timezone": "UTC",
-            "serverTime": 1565246363776,
-            "rateLimits": [{}],
-            "exchangeFilters": [],
-            "symbols": [
-                {
-                    "symbol": self.exchange_trading_pair,
-                    "status": "TRADING",
-                    "baseAsset": "ETH",
-                    "baseAssetPrecision": 8,
-                    "quoteAsset": "BTC",
-                    "quotePrecision": 8,
-                    "quoteAssetPrecision": 8,
-                    "orderTypes": ["LIMIT", "LIMIT_MAKER"],
-                    "icebergAllowed": True,
-                    "ocoAllowed": True,
-                    "isSpotTradingAllowed": True,
-                    "isMarginTradingAllowed": True,
-                    "filters": [
-                        {
-                            "filterType": "PRICE_FILTER",
-                            "minPrice": "0.00000100",
-                            "maxPrice": "100000.00000000",
-                            "tickSize": "0.00000100"
-                        }, {
-                            "filterType": "LOT_SIZE",
-                            "minQty": "0.00100000",
-                            "maxQty": "200000.00000000",
-                            "stepSize": "0.00100000"
-                        }, {
-                            "filterType": "MIN_NOTIONAL",
-                            "minNotional": "0.00100000"
-                        }
-                    ],
-                    "permissions": [
-                        "SPOT",
-                        "MARGIN"
-                    ]
-                }
-            ]
-        }
+    #     order_status = {
+    #         "timezone": "UTC",
+    #         "serverTime": 1565246363776,
+    #         "rateLimits": [{}],
+    #         "exchangeFilters": [],
+    #         "symbols": [
+    #             {
+    #                 "symbol": self.exchange_trading_pair,
+    #                 "status": "TRADING",
+    #                 "baseAsset": "ETH",
+    #                 "baseAssetPrecision": 8,
+    #                 "quoteAsset": "BTC",
+    #                 "quotePrecision": 8,
+    #                 "quoteAssetPrecision": 8,
+    #                 "orderTypes": ["LIMIT", "LIMIT_MAKER"],
+    #                 "icebergAllowed": True,
+    #                 "ocoAllowed": True,
+    #                 "isSpotTradingAllowed": True,
+    #                 "isMarginTradingAllowed": True,
+    #                 "filters": [
+    #                     {
+    #                         "filterType": "PRICE_FILTER",
+    #                         "minPrice": "0.00000100",
+    #                         "maxPrice": "100000.00000000",
+    #                         "tickSize": "0.00000100"
+    #                     }, {
+    #                         "filterType": "LOT_SIZE",
+    #                         "minQty": "0.00100000",
+    #                         "maxQty": "200000.00000000",
+    #                         "stepSize": "0.00100000"
+    #                     }, {
+    #                         "filterType": "MIN_NOTIONAL",
+    #                         "minNotional": "0.00100000"
+    #                     }
+    #                 ],
+    #                 "permissions": [
+    #                     "SPOT",
+    #                     "MARGIN"
+    #                 ]
+    #             }
+    #         ]
+    #     }
 
-        mock_response = order_status
-        mock_api.get(regex_url, body=json.dumps(mock_response))
+    #     mock_response = order_status
+    #     mock_api.get(regex_url, body=json.dumps(mock_response))
 
-        self.async_run_with_timeout(self.exchange._update_trading_rules())
+    #     self.async_run_with_timeout(self.exchange._update_trading_rules())
 
-        trading_rule = self.exchange.trading_rules[self.trading_pair]
-        self.assertEqual(self.trading_pair, trading_rule.trading_pair)
-        self.assertEqual(Decimal(order_status["symbols"][0]["filters"][1]["minQty"]),
-                         trading_rule.min_order_size)
-        self.assertEqual(Decimal(order_status["symbols"][0]["filters"][0]["tickSize"]),
-                         trading_rule.min_price_increment)
-        self.assertEqual(Decimal(order_status["symbols"][0]["filters"][1]["stepSize"]),
-                         trading_rule.min_base_amount_increment)
-        self.assertEqual(Decimal(order_status["symbols"][0]["filters"][2]["minNotional"]),
-                         trading_rule.min_notional_size)
+    #     trading_rule = self.exchange.trading_rules[self.trading_pair]
+    #     self.assertEqual(self.trading_pair, trading_rule.trading_pair)
+    #     self.assertEqual(Decimal(order_status["symbols"][0]["filters"][1]["minQty"]),
+    #                      trading_rule.min_order_size)
+    #     self.assertEqual(Decimal(order_status["symbols"][0]["filters"][0]["tickSize"]),
+    #                      trading_rule.min_price_increment)
+    #     self.assertEqual(Decimal(order_status["symbols"][0]["filters"][1]["stepSize"]),
+    #                      trading_rule.min_base_amount_increment)
+    #     self.assertEqual(Decimal(order_status["symbols"][0]["filters"][2]["minNotional"]),
+    #                      trading_rule.min_notional_size)
 
     # @aioresponses()
     # def test_update_trading_rules_ignores_rule_with_error(self, mock_api):
