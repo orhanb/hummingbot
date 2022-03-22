@@ -44,7 +44,6 @@ def public_rest_url(path_url: str) -> str:
     """
     Creates a full URL for provided public REST endpoint
     :param path_url: a public REST endpoint
-    :param domain: the Binance domain to connect to ("com" or "us"). The default value is "com"
     :return: the full URL to the endpoint
     """
     return CONSTANTS.REST_URL + CONSTANTS.PUBLIC_API_VERSION + path_url

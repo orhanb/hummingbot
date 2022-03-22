@@ -62,7 +62,6 @@ class BtcturkExchange(ExchangeBase):
     LONG_POLL_INTERVAL = 120.0
 
     MAX_ORDER_UPDATE_RETRIEVAL_RETRIES_WITH_FAILURES = 3
-    # MB added
 
     def __init__(
         self,
@@ -147,22 +146,14 @@ class BtcturkExchange(ExchangeBase):
         Returns a dictionary with the values of all the conditions that determine if the connector is ready to operate.
         The key of each entry is the condition name, and the value is True if condition is ready, False otherwise.
         """
-        a = {
+
+        return {
             "symbols_mapping_initialized": BtcturkAPIOrderBookDataSource.trading_pair_symbol_map_ready(
             ),
             "order_books_initialized": self._order_book_tracker.ready,
             "account_balance": len(self._account_balances) > 0 if self._trading_required else True,
             "trading_rule_initialized": len(self._trading_rules) > 0,
         }
-        IOError(a)
-        return a
-        # {
-        #     "symbols_mapping_initialized": BtcturkAPIOrderBookDataSource.trading_pair_symbol_map_ready(
-        #     ),
-        #     "order_books_initialized": self._order_book_tracker.ready,
-        #     "account_balance": len(self._account_balances) > 0 if self._trading_required else True,
-        #     "trading_rule_initialized": len(self._trading_rules) > 0,
-        # }
 
     @property
     def ready(self) -> bool:
@@ -191,12 +182,13 @@ class BtcturkExchange(ExchangeBase):
         - The polling loop to update order status and balance status using REST API (backup for main update process)
         - The background task to process the events received through the user stream tracker (websocket connection)
         """
+
         self._order_book_tracker.start()
         self._trading_rules_polling_task = safe_ensure_future(self._trading_rules_polling_loop())
 
         if self._trading_required:
             # TODO later status polling every 30 mins
-            # self._status_polling_task = safe_ensure_future(self._status_polling_loop())
+            self._status_polling_task = safe_ensure_future(self._status_polling_loop())
             self._user_stream_tracker_task = safe_ensure_future(self._user_stream_tracker.start())
             self._user_stream_event_listener_task = safe_ensure_future(self._user_stream_event_listener())
 
@@ -229,7 +221,7 @@ class BtcturkExchange(ExchangeBase):
         try:
             await self._api_request(
                 method=RESTMethod.GET,
-                path_url=CONSTANTS.EXCHANGE_INFO_PATH_URL,
+                path_url=CONSTANTS.TICKER_PRICE_CHANGE_PATH_URL,
             )
         except asyncio.CancelledError:
             raise
@@ -670,6 +662,7 @@ class BtcturkExchange(ExchangeBase):
         exchange_info = await self._api_request(method=RESTMethod.GET, path_url=CONSTANTS.EXCHANGE_INFO_PATH_URL)
         trading_rules_list = await self._format_trading_rules(exchange_info)
         self._trading_rules.clear()
+
         for trading_rule in trading_rules_list:
             self._trading_rules[trading_rule.trading_pair] = trading_rule
 

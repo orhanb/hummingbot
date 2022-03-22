@@ -2,46 +2,31 @@ from hummingbot.core.api_throttler.data_types import LinkedLimitWeightPair, Rate
 from hummingbot.core.data_type.in_flight_order import OrderState
 
 EXCHANGE_NAME = "btcturk"
-
-# BTCTURK NoIdea
 HBOT_ORDER_ID_PREFIX = "x-XEKWYICX"
 
-# Base URL
 REST_URL = "https://api.btcturk.com/api/"
 WSS_URL = "wss://ws-feed-pro.btcturk.com/"
 
-#
 PUBLIC_API_VERSION = "v2"
 PRIVATE_API_VERSION = "v1"
 
-# Public API endpoints
 TICKER_PRICE_CHANGE_PATH_URL = "/ticker"
 EXCHANGE_INFO_PATH_URL = "/server/exchangeInfo"
-# PING_PATH_URL = "/ping"
 SNAPSHOT_PATH_URL = "/orderbook"
-# SERVER_TIME_PATH_URL = "/time"
 PUBLIC_ORDERBOOK_PATH = "/orderbook"
 PUBLIC_TRADE_PATH = "/trades"
 # Private API endpoints
+
 ACCOUNTS_PATH_URL = "/users/balances"
 MY_TRADES_PATH_URL = "/users/transactions/trade"
 OPEN_ORDER_PATH_URL = "/openOrders"
 ALL_ORDER_PATH_URL = "/allOrders"
 ORDER_PATH = "/order"
-# BINANCE_USER_STREAM_PATH_URL = "/userDataStream"
+
 WS_HEARTBEAT_TIME_INTERVAL = 30
 
 SIDE_BUY = "buy"
 SIDE_SELL = "sell"
-
-"""TIME_IN_FORCE_GTC = "GTC"  # Good till cancelled
-TIME_IN_FORCE_IOC = "IOC"  # Immediate or cancel
-TIME_IN_FORCE_FOK = "FOK"  # Fill or kill
-"""
-# Rate Limit Type
-REQUEST_WEIGHT = "REQUEST_WEIGHT"
-ORDERS = "ORDERS"
-ORDERS_24HR = "ORDERS_24HR"
 
 # Rate Limit time intervals
 ONE_MINUTE = 60
@@ -63,11 +48,14 @@ ORDER_STATE = {
     # "EXPIRED": OrderState.FAILED, # probably 452
 }
 
-# Websocket event types
-# ToDo
 DIFF_EVENT_TYPE = "obdiff"
 ORDERFULL_EVENT_TYPE = "order"
 TRADE_EVENT_TYPE = "trade"
+
+# Rate Limit Type
+REQUEST_WEIGHT = "REQUEST_WEIGHT"
+ORDERS = "ORDERS"
+ORDERS_24HR = "ORDERS_24HR"
 
 RATE_LIMITS = [
     # Pools

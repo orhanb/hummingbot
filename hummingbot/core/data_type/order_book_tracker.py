@@ -177,6 +177,8 @@ class OrderBookTracker(ABC):
         """
         Initialize order books
         """
+        # self.logger().info(f"orderbooktracker init_order_books, trading_pairs {len(self._trading_pairs)}")
+        # raise IOError(f"orderbooktracker init_order_books, trading_pairs {len(self._trading_pairs)}")
         for index, trading_pair in enumerate(self._trading_pairs):
             self._order_books[trading_pair] = await self._initial_order_book_for_trading_pair(trading_pair)
             self._tracking_message_queues[trading_pair] = asyncio.Queue()
