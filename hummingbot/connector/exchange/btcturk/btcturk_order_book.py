@@ -81,6 +81,7 @@ class BtcturkOrderBook(OrderBook):
         msg[1].update({
             "price": msg[1].get("P"),
             "amount": msg[1].get("A"),
+            "trade_type": ["buy" if msg[1].get("S") == 1 else "sell"]
         })
         timestamp = float(msg[1]["D"]) * (1e-3)
         return BtcturkOrderBookMessage(
