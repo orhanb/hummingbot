@@ -188,7 +188,7 @@ class BtcturkExchange(ExchangeBase):
 
         if self._trading_required:
             # TODO later status polling every 30 mins
-            self._status_polling_task = safe_ensure_future(self._status_polling_loop())
+            # self._status_polling_task = safe_ensure_future(self._status_polling_loop())
             self._user_stream_tracker_task = safe_ensure_future(self._user_stream_tracker.start())
             self._user_stream_event_listener_task = safe_ensure_future(self._user_stream_event_listener())
 
@@ -865,7 +865,7 @@ class BtcturkExchange(ExchangeBase):
                 )
                 base_symbol = btcturk_utils.convert_from_exchange_trading_pair_to_base_quote(symbol)
                 params = {
-                    "symbol": base_symbol
+                    "pairSymbol": base_symbol
                 }
                 if self._last_poll_timestamp > 0:
                     params["startDate"] = query_time
@@ -1076,13 +1076,16 @@ class BtcturkExchange(ExchangeBase):
 
         if is_auth_required:
             url = btcturk_utils.private_rest_url(path_url)
-            # headers = self._auth.header_for_authentication()
+            headers = self._auth.header_for_authentication()
+            request = RESTRequest(
+                method=method, url=url, data=data, params=params, headers=headers, is_auth_required=is_auth_required
+            )
         else:
             url = btcturk_utils.public_rest_url(path_url)
-        request = RESTRequest(
-            # method=method, url=url, data=data, params=params, headers=headers, is_auth_required=is_auth_required
-            method=method, url=url, data=data, params=params, is_auth_required=is_auth_required
-        )
+            headers = None
+            request = RESTRequest(
+                method=method, url=url, data=data, params=params, headers=headers, is_auth_required=is_auth_required
+            )
 
         async with self._throttler.execute_task(limit_id=path_url):
             response = await client.call(request)
