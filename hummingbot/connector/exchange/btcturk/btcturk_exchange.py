@@ -168,8 +168,8 @@ class BtcturkExchange(ExchangeBase):
         return order_type.name.upper()
 
     @staticmethod
-    def to_hb_order_type(binance_type: str) -> OrderType:
-        return OrderType[binance_type]
+    def to_hb_order_type(btcturk_type: str) -> OrderType:
+        return OrderType[btcturk_type]
 
     def supported_order_types(self):
         return [OrderType.LIMIT, OrderType.LIMIT_MAKER]
@@ -188,7 +188,7 @@ class BtcturkExchange(ExchangeBase):
 
         if self._trading_required:
             # TODO later status polling every 30 mins
-            # self._status_polling_task = safe_ensure_future(self._status_polling_loop())
+            self._status_polling_task = safe_ensure_future(self._status_polling_loop())
             self._user_stream_tracker_task = safe_ensure_future(self._user_stream_tracker.start())
             self._user_stream_event_listener_task = safe_ensure_future(self._user_stream_event_listener())
 
@@ -455,7 +455,7 @@ class BtcturkExchange(ExchangeBase):
             self.logger().network(
                 "Unexpected error cancelling orders.",
                 exc_info=True,
-                app_warning_msg="Failed to cancel order with Binance. Check API key and network connection.",
+                app_warning_msg="Failed to cancel order with Btcturk. Check API key and network connection.",
             )
 
         failed_cancellations = [CancellationResult(oid, False) for oid in order_id_set]
@@ -610,7 +610,7 @@ class BtcturkExchange(ExchangeBase):
         Performs all required operation to keep the connector updated and synchronized with the exchange.
         It contains the backup logic to update status using API requests in case the main update source (the user stream
         data source websocket) fails.
-        It also updates the time synchronizer. This is necessary because Binance require the time of the client to be
+        It also updates the time synchronizer. This is necessary because Btcturk require the time of the client to be
         the same as the time in the exchange.
         Executes when the _poll_notifier event is enabled by the `tick` function.
         """
@@ -622,7 +622,7 @@ class BtcturkExchange(ExchangeBase):
                     self._update_balances(),
                     self._update_order_fills_from_trades(),
                 )
-                await self._update_order_status()
+                # await self._update_order_status()
                 self._last_poll_timestamp = self.current_timestamp
             except asyncio.CancelledError:
                 raise
@@ -667,45 +667,7 @@ class BtcturkExchange(ExchangeBase):
             self._trading_rules[trading_rule.trading_pair] = trading_rule
 
     async def _format_trading_rules(self, exchange_info_dict: Dict[str, Any]) -> List[TradingRule]:
-        """
-        Example:
-        {
-            "id": 1,
-            "name": "BTCTRY",
-            "nameNormalized": "BTC_TRY",
-            "status": "TRADING",
-            "numerator": "BTC",
-            "denominator": "TRY",
-            "numeratorScale": 8,
-            "denominatorScale": 2,
-            "hasFraction": false,
-            "filters": [
-                {
-                    "filterType": "PRICE_FILTER",
-                    "minPrice": "0.0000000000001",
-                    "maxPrice": "10000000",
-                    "tickSize": "10",
-                    "minExchangeValue": "99.91",
-                    "minAmount": null,
-                    "maxAmount": null
-                }
-            ],
-            "orderMethods": [
-                "MARKET",
-                "LIMIT",
-                "STOP_MARKET",
-                "STOP_LIMIT"
-            ],
-            "displayFormat": "#,###",
-            "commissionFromNumerator": false,
-            "order": 1000,
-            "priceRounding": false,
-            "isNew": false,
-            "marketPriceWarningThresholdPercentage": 0.2500000000000000,
-            "maximumOrderAmount": null,
-            "maximumLimitOrderPrice": 6034840.0000000000000000,
-            "minimumLimitOrderPrice": 60348.4000000000000000}
-        """
+
         trading_pair_rules = exchange_info_dict["data"].get("symbols", [])
         retval = []
         for rule in filter(btcturk_utils.is_exchange_information_valid, trading_pair_rules):
@@ -716,17 +678,21 @@ class BtcturkExchange(ExchangeBase):
                     throttler=self._throttler,
                 )
                 filters = rule.get("filters")
-                price_filter = [f for f in filters if f.get("filterType") == "PRICE_FILTER"][0]
+                # price_filter = [f for f in filters if f.get("filterType") == "PRICE_FILTER"][0]
                 # lot_size_filter = [f for f in filters if f.get("filterType") == "LOT_SIZE"][0]
                 # min_notional_filter = [f for f in filters if f.get("filterType") == "MIN_NOTIONAL"][0]
 
-                # min_order_size = Decimal(price_filter.get("minExchangeValue"))
-                min_order_size = Decimal(0)
-                tick_size = price_filter.get("tickSize")
+                px = Decimal(rule.get("minimumLimitOrderPrice"))
+                # min_order_size = min_notional/price
+                min_order_size = Decimal(filters[0].get("minExchangeValue")) / px
+                # tick_size = 10^-denominatorScale if hasFraction True, else 1
                 denominatorScale = rule.get("denominatorScale")
-                step_size_btcturk = 10 ** (-denominatorScale) if rule.get("hasFraction") == "true" else 0
+                numeratorScale = rule.get("numeratorScale")
+                tick_size_btcturk = 10 ** (-denominatorScale) if rule.get("hasFraction") == "true" else 1
+                tick_size = Decimal(tick_size_btcturk)
+                step_size_btcturk = 10 ** (-numeratorScale) if rule.get("hasFraction") == "true" else 1
                 step_size = Decimal(step_size_btcturk)
-                min_notional = Decimal(price_filter.get("minExchangeValue"))
+                min_notional = Decimal(filters[0].get("minExchangeValue"))
 
                 retval.append(
                     TradingRule(
@@ -787,7 +753,8 @@ class BtcturkExchange(ExchangeBase):
                             fill_timestamp=int(self.current_timestamp * 1e3),
                         )
                         self._order_tracker.process_trade_update(trade_update)
-
+                else:
+                    client_order_id = 0
                 tracked_order = self.in_flight_orders.get(client_order_id)
                 if tracked_order is not None:
                     # TODO

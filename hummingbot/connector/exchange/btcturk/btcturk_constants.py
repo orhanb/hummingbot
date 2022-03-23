@@ -28,6 +28,8 @@ WS_HEARTBEAT_TIME_INTERVAL = 30
 SIDE_BUY = "buy"
 SIDE_SELL = "sell"
 
+# TIME_IN_FORCE_GTC = 'GTC'
+
 # Rate Limit time intervals
 ONE_MINUTE = 60
 ONE_SECOND = 1

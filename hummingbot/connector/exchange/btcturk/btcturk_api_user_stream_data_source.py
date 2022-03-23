@@ -80,19 +80,20 @@ class BtcturkAPIUserStreamDataSource(UserStreamTrackerDataSource):
                     data = ws_response.data
 
                     if len(data) > 0:
-                        if data[0] == 114:
-                            login_result = data[1]["ok"]
-                            if not login_result:
-                                self.logger().error("Login failed", data)
-                                break
-                            else:
-                                self._ws_auth_event.set()
+                        output.put_nowait(data)
+                        # if data[0] == 114:
+                        #     login_result = data[1]["ok"]
+                        #     if not login_result:
+                        #         self.logger().error("Login failed", data)
+                        #         break
+                        #     else:
+                        #         self._ws_auth_event.set()
 
-                        if (data[0] == 201) or (data[0] == 441) or (data[0] == 451) or (data[0] == 452) or (data[0] == 453):
-                            # User related channels in ws: 201 = BalanceUpdate, 441 = Order Executed, 451 = OrderReceived
-                            # 452 = OrderDelete, 453 = OrderUpdate
-                            # if data[0] == 441:
-                            output.put_nowait(data)
+                        # if (data[0] == 201) or (data[0] == 441) or (data[0] == 451) or (data[0] == 452) or (data[0] == 453):
+                        #     # User related channels in ws: 201 = BalanceUpdate, 441 = Order Executed, 451 = OrderReceived
+                        #     # 452 = OrderDelete, 453 = OrderUpdate
+                        #     # if data[0] == 441:
+                        #     output.put_nowait(data)
 
             except asyncio.CancelledError:
                 raise

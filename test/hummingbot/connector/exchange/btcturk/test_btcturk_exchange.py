@@ -8,7 +8,6 @@ from unittest import TestCase
 
 from aioresponses import aioresponses
 from bidict import bidict
-
 from hummingbot.connector.exchange.btcturk import btcturk_constants as CONSTANTS, btcturk_utils
 from hummingbot.connector.exchange.btcturk.btcturk_api_order_book_data_source import BtcturkAPIOrderBookDataSource
 from hummingbot.connector.exchange.btcturk.btcturk_exchange import BtcturkExchange
@@ -27,7 +26,7 @@ from hummingbot.core.event.events import (
     # OrderType,
     # TradeType,
 )
-from hummingbot.core.network_iterator import NetworkStatus
+# from hummingbot.core.network_iterator import NetworkStatus
 
 
 class BtcturkExchangeTests(TestCase):
@@ -38,7 +37,7 @@ class BtcturkExchangeTests(TestCase):
     def setUpClass(cls) -> None:
         super().setUpClass()
         cls.base_asset = "BTC"
-        cls.quote_asset = "USDT"
+        cls.quote_asset = "TRY"
         cls.trading_pair = f"{cls.base_asset}-{cls.quote_asset}"
         cls.exchange_trading_pair = f"{cls.base_asset}{cls.quote_asset}"
         cls.symbol = f"{cls.base_asset}{cls.quote_asset}"
@@ -141,16 +140,16 @@ class BtcturkExchangeTests(TestCase):
     #     self.assertIn(OrderType.LIMIT, supported_types)
     #     self.assertIn(OrderType.LIMIT_MAKER, supported_types)
 
-    @aioresponses()
-    def test_check_network_successful(self, mock_api):
-        url = btcturk_utils.public_rest_url(CONSTANTS.EXCHANGE_INFO_PATH_URL)
-        regex_url = re.compile(f"^{url}".replace(".", r"\.").replace("?", r"\?"))
+    # @aioresponses()
+    # def test_check_network_successful(self, mock_api):
+    #     url = btcturk_utils.public_rest_url(CONSTANTS.EXCHANGE_INFO_PATH_URL)
+    #     regex_url = re.compile(f"^{url}".replace(".", r"\.").replace("?", r"\?"))
 
-        mock_api.get(regex_url, body=json.dumps({}))
+    #     mock_api.get(regex_url, body=json.dumps({}))
 
-        status = self.async_run_with_timeout(self.exchange.check_network())
+    #     status = self.async_run_with_timeout(self.exchange.check_network())
 
-        self.assertEqual(NetworkStatus.CONNECTED, status)
+    #     self.assertEqual(NetworkStatus.CONNECTED, status)
 
     # @aioresponses()
     # def test_check_network_unsuccessful(self, mock_api):
@@ -1057,69 +1056,72 @@ class BtcturkExchangeTests(TestCase):
     #     self.assertEqual(order.order_type, failure_event.order_type)
     #     self.assertNotIn(order.client_order_id, self.exchange.in_flight_orders)
 
-    # @aioresponses()
-    # def test_update_trading_rules(self, mock_api):
-    #     url = btcturk_utils.private_rest_url(CONSTANTS.EXCHANGE_INFO_PATH_URL)
-    #     regex_url = re.compile(f"^{url}".replace(".", r"\.").replace("?", r"\?"))
+    @aioresponses()
+    def test_update_trading_rules(self, mock_api):
+        url = btcturk_utils.public_rest_url(CONSTANTS.EXCHANGE_INFO_PATH_URL)
+        regex_url = re.compile(f"^{url}".replace(".", r"\.").replace("?", r"\?"))
+        null = None
+        false = False
+        true = True
+        order_status = {
+            "data": {
+                "timeZone": "UTC",
+                "serverTime": 1648050560043,
+                "symbols": [
+                    {
+                        "id": 1,
+                        "name": "BTCTRY",
+                        "nameNormalized": "BTC_TRY",
+                        "status": "TRADING",
+                        "numerator": "BTC",
+                        "denominator": "TRY",
+                        "numeratorScale": 8,
+                        "denominatorScale": 0,
+                        "hasFraction": false,
+                        "filters": [
+                            {
+                                "filterType": "PRICE_FILTER",
+                                "minPrice": "0.0000000000001",
+                                "maxPrice": "10000000",
+                                "tickSize": "10",
+                                "minExchangeValue": "99.91",
+                                "minAmount": null,
+                                "maxAmount": null,
+                            }
+                        ],
+                        "orderMethods": ["MARKET", "LIMIT", "STOP_MARKET", "STOP_LIMIT"],
+                        "displayFormat": "#,###",
+                        "commissionFromNumerator": false,
+                        "order": 1000,
+                        "priceRounding": false,
+                        "isNew": false,
+                        "marketPriceWarningThresholdPercentage": 0.2500000000000000,
+                        "maximumOrderAmount": null,
+                        "maximumLimitOrderPrice": 6324980.0000000000000000,
+                        "minimumLimitOrderPrice": 63249.8000000000000000,
+                    },
+                ]
+            },
+            "success": true,
+            "message": "",
+            "code": 0,
+        }
 
-    #     order_status = {
-    #         "timezone": "UTC",
-    #         "serverTime": 1565246363776,
-    #         "rateLimits": [{}],
-    #         "exchangeFilters": [],
-    #         "symbols": [
-    #             {
-    #                 "symbol": self.exchange_trading_pair,
-    #                 "status": "TRADING",
-    #                 "baseAsset": "ETH",
-    #                 "baseAssetPrecision": 8,
-    #                 "quoteAsset": "BTC",
-    #                 "quotePrecision": 8,
-    #                 "quoteAssetPrecision": 8,
-    #                 "orderTypes": ["LIMIT", "LIMIT_MAKER"],
-    #                 "icebergAllowed": True,
-    #                 "ocoAllowed": True,
-    #                 "isSpotTradingAllowed": True,
-    #                 "isMarginTradingAllowed": True,
-    #                 "filters": [
-    #                     {
-    #                         "filterType": "PRICE_FILTER",
-    #                         "minPrice": "0.00000100",
-    #                         "maxPrice": "100000.00000000",
-    #                         "tickSize": "0.00000100"
-    #                     }, {
-    #                         "filterType": "LOT_SIZE",
-    #                         "minQty": "0.00100000",
-    #                         "maxQty": "200000.00000000",
-    #                         "stepSize": "0.00100000"
-    #                     }, {
-    #                         "filterType": "MIN_NOTIONAL",
-    #                         "minNotional": "0.00100000"
-    #                     }
-    #                 ],
-    #                 "permissions": [
-    #                     "SPOT",
-    #                     "MARGIN"
-    #                 ]
-    #             }
-    #         ]
-    #     }
+        mock_response = order_status
+        mock_api.get(regex_url, body=json.dumps(mock_response))
 
-    #     mock_response = order_status
-    #     mock_api.get(regex_url, body=json.dumps(mock_response))
+        self.async_run_with_timeout(self.exchange._update_trading_rules())
 
-    #     self.async_run_with_timeout(self.exchange._update_trading_rules())
-
-    #     trading_rule = self.exchange.trading_rules[self.trading_pair]
-    #     self.assertEqual(self.trading_pair, trading_rule.trading_pair)
-    #     self.assertEqual(Decimal(order_status["symbols"][0]["filters"][1]["minQty"]),
-    #                      trading_rule.min_order_size)
-    #     self.assertEqual(Decimal(order_status["symbols"][0]["filters"][0]["tickSize"]),
-    #                      trading_rule.min_price_increment)
-    #     self.assertEqual(Decimal(order_status["symbols"][0]["filters"][1]["stepSize"]),
-    #                      trading_rule.min_base_amount_increment)
-    #     self.assertEqual(Decimal(order_status["symbols"][0]["filters"][2]["minNotional"]),
-    #                      trading_rule.min_notional_size)
+        trading_rule = self.exchange.trading_rules[self.trading_pair]
+        self.assertEqual(self.trading_pair, trading_rule.trading_pair)
+        # self.assertEqual(Decimal(order_status["data"]["symbols"]["filters"][1]["minQty"]),
+        #                  trading_rule.min_order_size)
+        self.assertEqual(Decimal(10),
+                         trading_rule.min_price_increment)
+        # self.assertEqual(Decimal(order_status["data"]["symbols"][0]["filters"][0]["stepSize"]),
+        #                   trading_rule.min_base_amount_increment)
+        self.assertEqual(Decimal(order_status["data"]["symbols"][0]["filters"][0]["minExchangeValue"]),
+                         Decimal(trading_rule.min_notional_size))
 
     # @aioresponses()
     # def test_update_trading_rules_ignores_rule_with_error(self, mock_api):
