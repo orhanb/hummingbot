@@ -55,21 +55,43 @@ class BtcturkOrderBookMessage(OrderBookMessage):
 
     @property
     def asks(self) -> List[OrderBookRow]:
-        results = [
-            OrderBookRow(float(entry["P"]), float(entry["A"]), self.update_id)
-            for entry in self.content["AO"]
-        ]
-        sorted(results, key=lambda a: a.price)
-        return results
+        if self.type is OrderBookMessageType.SNAPSHOT:
+            results = [
+                OrderBookRow(float(entry["P"]), float(entry["A"]), self.update_id)
+                for entry in self.content["AO"]
+            ]
+            sorted(results, key=lambda a: a.price)
+            return results
+
+        elif self.type is OrderBookMessageType.DIFF:
+            results = [
+                OrderBookRow(float(entry["P"]), float(entry["A"]) if entry["CP"] != 3 else float(0.0), self.update_id)
+                for entry in self.content["AO"]
+            ]
+            # sorted(results, key=lambda a: a.price)
+            return results
+        else:
+            return -1
 
     @property
     def bids(self) -> List[OrderBookRow]:
-        results = [
-            OrderBookRow(float(entry["P"]), float(entry["A"]), self.update_id)
-            for entry in self.content["BO"]
-        ]
-        sorted(results, key=lambda b: b.price)
-        return results
+        if self.type is OrderBookMessageType.SNAPSHOT:
+            results = [
+                OrderBookRow(float(entry["P"]), float(entry["A"]), self.update_id)
+                for entry in self.content["BO"]
+            ]
+            sorted(results, key=lambda b: b.price)
+            return results
+
+        elif self.type is OrderBookMessageType.DIFF:
+            results = [
+                OrderBookRow(float(entry["P"]), float(entry["A"]) if entry["CP"] != 3 else float(0.0), self.update_id)
+                for entry in self.content["AO"]
+            ]
+            # sorted(results, key=lambda b: b.price)
+            return results
+        else:
+            return -1
 
     def __eq__(self, other) -> bool:
         return self.type == other.type and self.timestamp == other.timestamp
