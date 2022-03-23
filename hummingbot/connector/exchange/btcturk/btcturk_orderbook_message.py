@@ -86,7 +86,7 @@ class BtcturkOrderBookMessage(OrderBookMessage):
         elif self.type is OrderBookMessageType.DIFF:
             results = [
                 OrderBookRow(float(entry["P"]), float(entry["A"]) if entry["CP"] != 3 else float(0.0), self.update_id)
-                for entry in self.content["AO"]
+                for entry in self.content["BO"]
             ]
             # sorted(results, key=lambda b: b.price)
             return results
