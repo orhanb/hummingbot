@@ -682,7 +682,7 @@ class BtcturkExchange(ExchangeBase):
                 # lot_size_filter = [f for f in filters if f.get("filterType") == "LOT_SIZE"][0]
                 # min_notional_filter = [f for f in filters if f.get("filterType") == "MIN_NOTIONAL"][0]
 
-                px = Decimal(rule.get("minimumLimitOrderPrice"))
+                px = Decimal(rule.get("minimumLimitOrderPrice")) * 10
                 # min_order_size = min_notional/price
                 min_order_size = Decimal(filters[0].get("minExchangeValue")) / px
                 # tick_size = 10^-denominatorScale if hasFraction True, else 1
