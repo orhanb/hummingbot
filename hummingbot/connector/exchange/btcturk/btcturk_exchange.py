@@ -685,26 +685,26 @@ class BtcturkExchange(ExchangeBase):
                 # min_notional_filter = [f for f in filters if f.get("filterType") == "MIN_NOTIONAL"][0]
                 denominatorScale = int(rule.get("denominatorScale"))
                 numeratorScale = int(rule.get("numeratorScale"))
-                px = Decimal(rule.get("minimumLimitOrderPrice") * 10)
+                px = float(rule.get("minimumLimitOrderPrice")) * 10
                 # min_order_size = min_notional/price
-                min_order_size = round(Decimal(filters[0].get("minExchangeValue")) / px, numeratorScale)
+                min_order_size = float(filters[0].get("minExchangeValue")) / px
                 # tick_size = 10^-denominatorScale if hasFraction True, else 1
                 tick_size_btcturk = (10 ** (-denominatorScale)) if rule.get("hasFraction") else 1
-                tick_size = Decimal(tick_size_btcturk)
+                # tick_size = Decimal(tick_size_btcturk)
                 step_size_btcturk = (10 ** (-numeratorScale)) if rule.get("hasFraction") else 1
-                step_size = Decimal(step_size_btcturk)
-                min_notional = Decimal(filters[0].get("minExchangeValue"))
+                # step_size = Decimal(step_size_btcturk)
+                min_notional = float(filters[0].get("minExchangeValue"))
 
                 retval.append(
                     TradingRule(
                         trading_pair,
                         min_order_size=Decimal(min_order_size),
-                        min_price_increment=Decimal(tick_size),
-                        min_base_amount_increment=Decimal(step_size),
+                        min_price_increment=Decimal(tick_size_btcturk),
+                        min_base_amount_increment=Decimal(step_size_btcturk),
                         min_notional_size=Decimal(min_notional),
                     )
                 )
-
+                # self.logger().error(f"min_ordersize: {min_order_size}")
             except Exception:
                 self.logger().exception(f"Error parsing the trading pair rule {rule}. Skipping.")
         return retval
@@ -1045,8 +1045,6 @@ class BtcturkExchange(ExchangeBase):
         if is_auth_required:
             url = btcturk_utils.private_rest_url(path_url)
             headers = self._auth.header_for_authentication()
-            if path_url == "order":
-                pass
             request = RESTRequest(
                 method=method, url=url, data=data, params=params, headers=headers, is_auth_required=is_auth_required
             )

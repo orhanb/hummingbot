@@ -28,7 +28,7 @@ class BtcturkAuth(AuthBase):
             # params = {}
             # params.update()
             # request.
-            request.data = json.dumps(request.params)
+            request.params = json.dumps(request.params)
 
         elif request.method == RESTMethod.GET:
             headers = {}
