@@ -680,31 +680,24 @@ class BtcturkExchange(ExchangeBase):
                     throttler=self._throttler,
                 )
                 filters = rule.get("filters")
-                # price_filter = [f for f in filters if f.get("filterType") == "PRICE_FILTER"][0]
-                # lot_size_filter = [f for f in filters if f.get("filterType") == "LOT_SIZE"][0]
-                # min_notional_filter = [f for f in filters if f.get("filterType") == "MIN_NOTIONAL"][0]
-                denominatorScale = int(rule.get("denominatorScale"))
-                numeratorScale = int(rule.get("numeratorScale"))
-                px = float(rule.get("minimumLimitOrderPrice")) * 10
-                # min_order_size = min_notional/price
-                min_order_size = float(filters[0].get("minExchangeValue")) / px
-                # tick_size = 10^-denominatorScale if hasFraction True, else 1
-                tick_size_btcturk = (10 ** (-denominatorScale)) if rule.get("hasFraction") else 1
-                # tick_size = Decimal(tick_size_btcturk)
-                step_size_btcturk = (10 ** (-numeratorScale)) if rule.get("hasFraction") else 1
-                # step_size = Decimal(step_size_btcturk)
-                min_notional = float(filters[0].get("minExchangeValue"))
+                numeratorScale = Decimal(str(rule.get("numeratorScale")))
+                denominatorScale = Decimal(str(rule.get("denominatorScale")))
+                px = Decimal(str(rule.get("minimumLimitOrderPrice"))) * 10
+                min_notional = Decimal(filters[0].get("minExchangeValue"))
+                min_order_size = min_notional / px
+                tick_size = Decimal(10 ** (-denominatorScale)) if rule.get("hasFraction") else 1
+                # tick_size = Decimal(filters[0].get("tickSize"))
+                step_size_btcturk = Decimal(10 ** (-numeratorScale)) if rule.get("hasFraction") else 1
 
                 retval.append(
                     TradingRule(
                         trading_pair,
                         min_order_size=Decimal(min_order_size),
-                        min_price_increment=Decimal(tick_size_btcturk),
+                        min_price_increment=Decimal(tick_size),
                         min_base_amount_increment=Decimal(step_size_btcturk),
                         min_notional_size=Decimal(min_notional),
                     )
                 )
-                # self.logger().error(f"min_ordersize: {min_order_size}")
             except Exception:
                 self.logger().exception(f"Error parsing the trading pair rule {rule}. Skipping.")
         return retval
