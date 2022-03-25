@@ -8,6 +8,7 @@ from hummingbot.core.web_assistant.auth import AuthBase
 from hummingbot.core.web_assistant.connections.data_types import RESTRequest, RESTMethod, WSRequest
 from hummingbot.connector.time_synchronizer import TimeSynchronizer
 import base64
+import json
 
 
 class BtcturkAuth(AuthBase):
@@ -24,7 +25,11 @@ class BtcturkAuth(AuthBase):
         """
         if request.method == RESTMethod.POST:
             # request.params = self.add_auth_to_params(params=request.params)
-            request.data = request.params
+            # params = {}
+            # params.update()
+            # request.
+            request.data = json.dumps(request.params)
+
         elif request.method == RESTMethod.GET:
             headers = {}
             headers.update(self.header_for_authentication())
@@ -39,7 +44,7 @@ class BtcturkAuth(AuthBase):
         """
         return request  # pass-through
 
-    def add_auth_to_params(self, params: Dict[str, Any]):
+    def add_params_to_json(self, params: Dict[str, Any]):
         # timestamp = int(self.time_provider.time() * 1e3)
 
         request_params = OrderedDict(params or {})

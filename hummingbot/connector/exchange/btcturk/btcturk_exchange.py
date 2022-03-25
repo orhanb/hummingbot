@@ -50,6 +50,7 @@ from hummingbot.core.web_assistant.connections.data_types import RESTMethod, RES
 from hummingbot.core.web_assistant.rest_assistant import RESTAssistant
 from hummingbot.core.web_assistant.web_assistants_factory import WebAssistantsFactory
 from hummingbot.logger import HummingbotLogger
+import json
 
 s_logger = None
 s_decimal_0 = Decimal(0)
@@ -524,7 +525,7 @@ class BtcturkExchange(ExchangeBase):
             "orderType": side_str,
             "quantity": amount_str,
             "orderMethod": type_str,
-            "newClientOrderId": order_id,
+            "newOrderClientId": order_id,
             "price": price_str,
         }
         # if order_type == OrderType.LIMIT:
@@ -532,7 +533,7 @@ class BtcturkExchange(ExchangeBase):
 
         try:
             order_result = await self._api_request(
-                method=RESTMethod.POST, path_url=CONSTANTS.ORDER_PATH, data=api_params, is_auth_required=True
+                method=RESTMethod.POST, path_url=CONSTANTS.ORDER_PATH, data=json.dumps(api_params), is_auth_required=True
             )
 
             exchange_order_id = str(order_result["data"]["id"])
@@ -682,13 +683,12 @@ class BtcturkExchange(ExchangeBase):
                 # price_filter = [f for f in filters if f.get("filterType") == "PRICE_FILTER"][0]
                 # lot_size_filter = [f for f in filters if f.get("filterType") == "LOT_SIZE"][0]
                 # min_notional_filter = [f for f in filters if f.get("filterType") == "MIN_NOTIONAL"][0]
-
-                px = Decimal(rule.get("minimumLimitOrderPrice")) * 10
+                denominatorScale = int(rule.get("denominatorScale"))
+                numeratorScale = int(rule.get("numeratorScale"))
+                px = Decimal(rule.get("minimumLimitOrderPrice") * 10)
                 # min_order_size = min_notional/price
-                min_order_size = Decimal(filters[0].get("minExchangeValue")) / px
+                min_order_size = round(Decimal(filters[0].get("minExchangeValue")) / px, numeratorScale)
                 # tick_size = 10^-denominatorScale if hasFraction True, else 1
-                denominatorScale = rule.get("denominatorScale")
-                numeratorScale = rule.get("numeratorScale")
                 tick_size_btcturk = (10 ** (-denominatorScale)) if rule.get("hasFraction") else 1
                 tick_size = Decimal(tick_size_btcturk)
                 step_size_btcturk = (10 ** (-numeratorScale)) if rule.get("hasFraction") else 1
@@ -698,7 +698,7 @@ class BtcturkExchange(ExchangeBase):
                 retval.append(
                     TradingRule(
                         trading_pair,
-                        min_order_size=min_order_size,
+                        min_order_size=Decimal(min_order_size),
                         min_price_increment=Decimal(tick_size),
                         min_base_amount_increment=Decimal(step_size),
                         min_notional_size=Decimal(min_notional),
@@ -1045,6 +1045,8 @@ class BtcturkExchange(ExchangeBase):
         if is_auth_required:
             url = btcturk_utils.private_rest_url(path_url)
             headers = self._auth.header_for_authentication()
+            if path_url == "order":
+                pass
             request = RESTRequest(
                 method=method, url=url, data=data, params=params, headers=headers, is_auth_required=is_auth_required
             )
@@ -1059,7 +1061,7 @@ class BtcturkExchange(ExchangeBase):
 
             if response.status != 200:
                 data = await response.text()
-                raise IOError(f"Error fetching data from {url}. HTTP status is {response.status} ({data}) {request}.")
+                raise IOError(f"Error fetching data from {url}. HTTP status is {response.status} ({data}) request: {request}.")
             try:
                 parsed_response = await response.json()
             except Exception:
