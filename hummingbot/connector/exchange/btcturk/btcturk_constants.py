@@ -94,4 +94,12 @@ RATE_LIMITS = [
         time_interval=ONE_MINUTE,
         linked_limits=[LinkedLimitWeightPair(REQUEST_WEIGHT, 10)],
     ),
+    RateLimit(
+        limit_id=ORDER_PATH,
+        limit=MAX_REQUEST,
+        time_interval=ONE_MINUTE,
+        linked_limits=[
+            LinkedLimitWeightPair(REQUEST_WEIGHT, 1),
+            LinkedLimitWeightPair(ORDERS, 1),
+            LinkedLimitWeightPair(ORDERS_24HR, 1)]),
 ]

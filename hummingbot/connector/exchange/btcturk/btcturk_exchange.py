@@ -172,7 +172,7 @@ class BtcturkExchange(ExchangeBase):
         return OrderType[btcturk_type]
 
     def supported_order_types(self):
-        return [OrderType.LIMIT, OrderType.LIMIT_MAKER]
+        return [OrderType.LIMIT, OrderType.MARKET]
 
     async def start_network(self):
         """
@@ -334,7 +334,8 @@ class BtcturkExchange(ExchangeBase):
         """
         trading_rule = self._trading_rules[trading_pair]
         quantized_amount: Decimal = super().quantize_order_amount(trading_pair, amount)
-
+        # self.logger().error(quantized_amount)
+        # self.logger().error(f"trading_rule: {trading_rule}")
         # Check against min_order_size and min_notional_size. If not passing either check, return 0.
         if quantized_amount < trading_rule.min_order_size:
             return s_decimal_0
@@ -540,7 +541,7 @@ class BtcturkExchange(ExchangeBase):
                 client_order_id=order_id,
                 exchange_order_id=exchange_order_id,
                 trading_pair=trading_pair,
-                update_timestamp=int(order_result["datetime"]),
+                update_timestamp=int(order_result["data"]["datetime"]),
                 new_state=OrderState.OPEN,
             )
             self._order_tracker.process_order_update(order_update)
@@ -617,12 +618,12 @@ class BtcturkExchange(ExchangeBase):
         while True:
             try:
                 await self._poll_notifier.wait()
-                await self._update_time_synchronizer()
+                # await self._update_time_synchronizer()
                 await safe_gather(
                     self._update_balances(),
                     self._update_order_fills_from_trades(),
                 )
-                # await self._update_order_status()
+                await self._update_order_status()
                 self._last_poll_timestamp = self.current_timestamp
             except asyncio.CancelledError:
                 raise
@@ -688,9 +689,9 @@ class BtcturkExchange(ExchangeBase):
                 # tick_size = 10^-denominatorScale if hasFraction True, else 1
                 denominatorScale = rule.get("denominatorScale")
                 numeratorScale = rule.get("numeratorScale")
-                tick_size_btcturk = 10 ** (-denominatorScale) if rule.get("hasFraction") == "true" else 1
+                tick_size_btcturk = (10 ** (-denominatorScale)) if rule.get("hasFraction") else 1
                 tick_size = Decimal(tick_size_btcturk)
-                step_size_btcturk = 10 ** (-numeratorScale) if rule.get("hasFraction") == "true" else 1
+                step_size_btcturk = (10 ** (-numeratorScale)) if rule.get("hasFraction") else 1
                 step_size = Decimal(step_size_btcturk)
                 min_notional = Decimal(filters[0].get("minExchangeValue"))
 
@@ -777,7 +778,7 @@ class BtcturkExchange(ExchangeBase):
 
                     order_update = OrderUpdate(
                         trading_pair=tracked_order.trading_pair,
-                        update_timestamp=int(self._btcturk_time_synchronizer.time()),
+                        update_timestamp=int(self.current_timestamp * 1e3),
                         new_state=new_state,
                         client_order_id=client_order_id,
                         exchange_order_id=str(event_message[1]["id"]),
@@ -832,7 +833,7 @@ class BtcturkExchange(ExchangeBase):
                 )
                 base_symbol = btcturk_utils.convert_from_exchange_trading_pair_to_base_quote(symbol)
                 params = {
-                    "pairSymbol": base_symbol
+                    "symbol": base_symbol,
                 }
                 if self._last_poll_timestamp > 0:
                     params["startDate"] = query_time
@@ -1049,9 +1050,8 @@ class BtcturkExchange(ExchangeBase):
             )
         else:
             url = btcturk_utils.public_rest_url(path_url)
-            headers = None
             request = RESTRequest(
-                method=method, url=url, data=data, params=params, headers=headers, is_auth_required=is_auth_required
+                method=method, url=url, data=data, params=params, is_auth_required=is_auth_required
             )
 
         async with self._throttler.execute_task(limit_id=path_url):

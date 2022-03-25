@@ -61,7 +61,9 @@ class AsyncThrottlerBase(ABC):
             limit.limit_id: limit
             for limit in self._rate_limits
         }
-
+        # MB added
+        # for key, item in self._id_to_limit_map.items():
+        #     self.logger().error(f"key: {key} item: {item}")
         # List of TaskLog used to determine the API requests within a set time window.
         self._task_logs: List[TaskLog] = []
 
@@ -74,7 +76,8 @@ class AsyncThrottlerBase(ABC):
 
     def get_related_limits(self, limit_id: str) -> Tuple[RateLimit, List[Tuple[RateLimit, int]]]:
         rate_limit: Optional[RateLimit] = self._id_to_limit_map.get(limit_id, None)
-
+        # MB added
+        self.logger().error(f"Get related limits limit_id: {limit_id} rate_limit: {rate_limit}")
         related_limits = [(self._id_to_limit_map[limit_weight_pair.limit_id], limit_weight_pair.weight)
                           for limit_weight_pair in rate_limit.linked_limits
                           if limit_weight_pair.limit_id in self._id_to_limit_map]

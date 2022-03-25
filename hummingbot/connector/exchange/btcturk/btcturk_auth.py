@@ -23,13 +23,12 @@ class BtcturkAuth(AuthBase):
         :param request: the request to be configured for authenticated interaction
         """
         if request.method == RESTMethod.POST:
-            request.params = self.add_auth_to_params(params=request.params)
-
-        headers = {}
-        if request.headers is not None:
-            headers.update(request.headers)
-        headers.update(self.header_for_authentication())
-        request.headers = headers
+            # request.params = self.add_auth_to_params(params=request.params)
+            request.data = request.params
+        elif request.method == RESTMethod.GET:
+            headers = {}
+            headers.update(self.header_for_authentication())
+            request.headers = headers
 
         return request
 
