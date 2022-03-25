@@ -22,6 +22,8 @@ MY_TRADES_PATH_URL = "/users/transactions/trade"
 OPEN_ORDER_PATH_URL = "/openOrders"
 ALL_ORDER_PATH_URL = "/allOrders"
 ORDER_PATH = "/order"
+ORDER_CANCEL_PATH = "/order?id={}"
+GET_SINGLE_ORDER_PATH = "/order{}"
 
 WS_HEARTBEAT_TIME_INTERVAL = 30
 
@@ -96,6 +98,23 @@ RATE_LIMITS = [
     ),
     RateLimit(
         limit_id=ORDER_PATH,
+        limit=MAX_REQUEST,
+        time_interval=ONE_MINUTE,
+        linked_limits=[
+            LinkedLimitWeightPair(REQUEST_WEIGHT, 1),
+            LinkedLimitWeightPair(ORDERS, 1),
+            LinkedLimitWeightPair(ORDERS_24HR, 1)]
+    ),
+    RateLimit(
+        limit_id=ORDER_CANCEL_PATH,
+        limit=MAX_REQUEST,
+        time_interval=ONE_MINUTE,
+        linked_limits=[
+            LinkedLimitWeightPair(REQUEST_WEIGHT, 1),
+            LinkedLimitWeightPair(ORDERS, 1),
+            LinkedLimitWeightPair(ORDERS_24HR, 1)]),
+    RateLimit(
+        limit_id=GET_SINGLE_ORDER_PATH,
         limit=MAX_REQUEST,
         time_interval=ONE_MINUTE,
         linked_limits=[

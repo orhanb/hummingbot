@@ -449,8 +449,8 @@ class BtcturkExchange(ExchangeBase):
                 for cr in cancellation_results:
                     if isinstance(cr, Exception):
                         continue
-                    if isinstance(cr, dict) and "origClientOrderId" in cr:
-                        client_order_id = cr.get("origClientOrderId")
+                    if isinstance(cr, dict) and "cancelled_order_id" in cr:
+                        client_order_id = cr.get("cancelled_order_id")
                         order_id_set.remove(client_order_id)
                         successful_cancellations.append(CancellationResult(client_order_id, True))
         except Exception:
@@ -533,7 +533,10 @@ class BtcturkExchange(ExchangeBase):
 
         try:
             order_result = await self._api_request(
-                method=RESTMethod.POST, path_url=CONSTANTS.ORDER_PATH, data=json.dumps(api_params), is_auth_required=True
+                method=RESTMethod.POST,
+                path_url=CONSTANTS.ORDER_PATH,
+                data=json.dumps(api_params),
+                is_auth_required=True
             )
 
             exchange_order_id = str(order_result["data"]["id"])
@@ -555,7 +558,6 @@ class BtcturkExchange(ExchangeBase):
                 exc_info=True,
                 app_warning_msg=str(e),
             )
-            # Dont understand why they multiple current_timestam 1e3
             order_update: OrderUpdate = OrderUpdate(
                 client_order_id=order_id,
                 trading_pair=trading_pair,
@@ -575,29 +577,22 @@ class BtcturkExchange(ExchangeBase):
         tracked_order = self._order_tracker.fetch_tracked_order(order_id)
         if tracked_order is not None:
             try:
-                # BTCTURK only need id to cancel order
-                # symbol = await BtcturkAPIOrderBookDataSource.exchange_symbol_associated_to_pair(
-                #     trading_pair=trading_pair,
-                #     api_factory=self._api_factory,
-                #     throttler=self._throttler,
-                # )
-                api_params = {
-                    "id": order_id,
-                }
+                ex_order_id = tracked_order.exchange_order_id
                 cancel_result = await self._api_request(
                     method=RESTMethod.DELETE,
-                    path_url=CONSTANTS.ORDER_PATH,
-                    params=api_params,
+                    path_url=CONSTANTS.ORDER_CANCEL_PATH.format(ex_order_id),
                     is_auth_required=True,
+                    limit_path_url=CONSTANTS.ORDER_CANCEL_PATH
                 )
 
-                if cancel_result.get("success") == "true":
+                if cancel_result.get("message") == "SUCCESS":
                     order_update: OrderUpdate = OrderUpdate(
                         client_order_id=order_id,
                         trading_pair=tracked_order.trading_pair,
                         update_timestamp=int(self.current_timestamp * 1e3),
                         new_state=OrderState.CANCELLED,
                     )
+                    cancel_result["cancelled_order_id"] = order_id
                     self._order_tracker.process_order_update(order_update)
                 return cancel_result
 
@@ -908,15 +903,8 @@ class BtcturkExchange(ExchangeBase):
             tasks = [
                 self._api_request(
                     method=RESTMethod.GET,
-                    path_url=CONSTANTS.OPEN_ORDER_PATH_URL,
-                    params={
-                        "pairSymbol": await BtcturkAPIOrderBookDataSource.exchange_symbol_associated_to_pair(
-                            trading_pair=o.trading_pair,
-                            api_factory=self._api_factory,
-                            throttler=self._throttler,
-                        ),
-                        # "origClientOrderId": o.client_order_id,
-                    },
+                    path_url=CONSTANTS.GET_SINGLE_ORDER_PATH.format(o.exchange_order_id),
+                    limit_path_url=CONSTANTS.ORDER_PATH,
                     is_auth_required=True,
                 )
                 for o in tracked_orders
@@ -1031,6 +1019,7 @@ class BtcturkExchange(ExchangeBase):
         params: Optional[Dict[str, Any]] = None,
         data: Optional[Dict[str, Any]] = None,
         is_auth_required: bool = False,
+        limit_path_url: Optional[str] = None,
     ) -> Dict[str, Any]:
 
         client = await self._get_rest_assistant()
@@ -1046,8 +1035,8 @@ class BtcturkExchange(ExchangeBase):
             request = RESTRequest(
                 method=method, url=url, data=data, params=params, is_auth_required=is_auth_required
             )
-
-        async with self._throttler.execute_task(limit_id=path_url):
+        limit_id_path = path_url if limit_path_url is None else limit_path_url
+        async with self._throttler.execute_task(limit_id=limit_id_path):
             response = await client.call(request)
 
             if response.status != 200:
