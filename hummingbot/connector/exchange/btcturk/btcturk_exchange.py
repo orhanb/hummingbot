@@ -617,7 +617,7 @@ class BtcturkExchange(ExchangeBase):
                 # await self._update_time_synchronizer()
                 await safe_gather(
                     self._update_balances(),
-                    self._update_order_fills_from_trades(),
+                    # self._update_order_fills_from_trades(),
                 )
                 await self._update_order_status()
                 self._last_poll_timestamp = self.current_timestamp
@@ -724,7 +724,7 @@ class BtcturkExchange(ExchangeBase):
                     client_order_id = event_message[1].get("clientId", None)
                     tracked_order = self._order_tracker.fetch_order(client_order_id=client_order_id)
                     # btcturk only provides exchange order id, not trade_id
-                    if event_message[1]["amount"] > 0:
+                    if Decimal(str(event_message[1]["amount"])) > 0:
                         filled = True
                     if tracked_order is not None:
                         # timestamp updated
@@ -735,10 +735,10 @@ class BtcturkExchange(ExchangeBase):
                             exchange_order_id=str(event_message[1]["id"]),
                             trading_pair=tracked_order.trading_pair,
                             fee_asset=quote_ccy,
-                            fee_paid=Decimal(event_message[1]["amount"]) * Decimal(event_message[1]["price"]) * btcturk_utils.DEFAULT_FEES[0],
-                            fill_base_amount=Decimal(event_message[1]["amount"]),
-                            fill_quote_amount=Decimal(event_message[1]["amount"]) * Decimal(event_message[1]["price"]),
-                            fill_price=Decimal(event_message[1]["price"]),
+                            fee_paid=Decimal(str(event_message[1]["amount"])) * Decimal(str(event_message[1]["price"])) * Decimal(btcturk_utils.DEFAULT_FEES[0]),
+                            fill_base_amount=Decimal(str(event_message[1]["amount"])),
+                            fill_quote_amount=Decimal(str(event_message[1]["amount"])) * Decimal(str(event_message[1]["price"])),
+                            fill_price=Decimal(str(event_message[1]["price"])),
                             fill_timestamp=int(self.current_timestamp * 1e3),
                         )
                         self._order_tracker.process_trade_update(trade_update)
@@ -752,7 +752,7 @@ class BtcturkExchange(ExchangeBase):
                     if filled:  # This already implies event type is 441
                         new_state = OrderState.PARTIALLY_FILLED
                         # TODO
-                        if math.isclose(event_message[1]["amount"], tracked_order.amount - tracked_order.executed_amount_base):
+                        if math.isclose(Decimal(str(event_message[1]["amount"])), tracked_order.amount - tracked_order.executed_amount_base):
                             new_state = OrderState.FILLED
                     elif event_type == 451:
                         new_state = OrderState.OPEN
