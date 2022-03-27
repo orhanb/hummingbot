@@ -536,7 +536,8 @@ class BtcturkExchange(ExchangeBase):
                 method=RESTMethod.POST,
                 path_url=CONSTANTS.ORDER_PATH,
                 data=json.dumps(api_params),
-                is_auth_required=True
+                is_auth_required=True,
+                limit_path_url=CONSTANTS.ORDER_PATH
             )
 
             exchange_order_id = str(order_result["data"]["id"])
@@ -619,7 +620,7 @@ class BtcturkExchange(ExchangeBase):
                     self._update_balances(),
                     # self._update_order_fills_from_trades(),
                 )
-                await self._update_order_status()
+                # await self._update_order_status()
                 self._last_poll_timestamp = self.current_timestamp
             except asyncio.CancelledError:
                 raise
@@ -903,7 +904,7 @@ class BtcturkExchange(ExchangeBase):
             tasks = [
                 self._api_request(
                     method=RESTMethod.GET,
-                    path_url=CONSTANTS.GET_SINGLE_ORDER_PATH.format(o.exchange_order_id),
+                    path_url=CONSTANTS.OPEN_ORDER_PATH_URL.format(o.exchange_order_id),
                     limit_path_url=CONSTANTS.ORDER_PATH,
                     is_auth_required=True,
                 )
@@ -915,7 +916,11 @@ class BtcturkExchange(ExchangeBase):
             updated_results = []
             for i in results["data"]:
                 for j in i:
-                    updated_results.append(j)
+                    if j is None:
+                        continue
+                    else:
+                        for k in j:
+                            updated_results.append(k)
 
             for order_update, tracked_order in zip(updated_results, tracked_orders):
                 client_order_id = tracked_order.client_order_id

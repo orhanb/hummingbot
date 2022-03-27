@@ -962,7 +962,7 @@ class BinanceExchange(ExchangeBase):
 
     async def _update_time_synchronizer(self):
         try:
-            await self._btcturk_time_synchronizer.update_server_time_offset_with_time_provider(
+            await self._binance_time_synchronizer.update_server_time_offset_with_time_provider(
                 time_provider=self._get_current_server_time()
             )
         except asyncio.CancelledError:
