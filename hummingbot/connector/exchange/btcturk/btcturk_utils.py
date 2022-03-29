@@ -11,7 +11,7 @@ from hummingbot.core.utils.tracking_nonce import get_tracking_nonce
 
 CENTRALIZED = True
 EXAMPLE_PAIR = "BTCUSDT"
-DEFAULT_FEES = [0.05, 0.09]
+DEFAULT_FEES = [0.0005, 0.0009]
 
 
 def get_new_client_order_id(is_buy: bool, trading_pair: str) -> str:

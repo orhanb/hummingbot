@@ -694,6 +694,7 @@ class BtcturkExchange(ExchangeBase):
                         min_notional_size=Decimal(min_notional),
                     )
                 )
+                # self.logger().error(f"retval: {retval}")
             except Exception:
                 self.logger().exception(f"Error parsing the trading pair rule {rule}. Skipping.")
         return retval
@@ -904,7 +905,7 @@ class BtcturkExchange(ExchangeBase):
             tasks = [
                 self._api_request(
                     method=RESTMethod.GET,
-                    path_url=CONSTANTS.OPEN_ORDER_PATH_URL.format(o.exchange_order_id),
+                    path_url=CONSTANTS.ALL_ORDER_PATH_URL.format(o.trading_pair, o.exchange_order_id),
                     limit_path_url=CONSTANTS.ORDER_PATH,
                     is_auth_required=True,
                 )
@@ -914,13 +915,12 @@ class BtcturkExchange(ExchangeBase):
             results = await safe_gather(*tasks, return_exceptions=True)
             # TODO need to manipulate results
             updated_results = []
-            for i in results["data"]:
-                for j in i:
+            for i in results:
+                for j in i["data"]:
                     if j is None:
-                        continue
+                        break
                     else:
-                        for k in j:
-                            updated_results.append(k)
+                        updated_results.append(j[-1])
 
             for order_update, tracked_order in zip(updated_results, tracked_orders):
                 client_order_id = tracked_order.client_order_id
@@ -957,8 +957,10 @@ class BtcturkExchange(ExchangeBase):
                     # new_state = CONSTANTS.ORDER_STATE[order_update["status"]]
                     if order_update["status"] == "Untouched":
                         new_state = CONSTANTS.ORDER_STATE["NEW"]
-                    elif order_update["status"] == "Partial":
-                        new_state = CONSTANTS.ORDER_STATE["PARTIALLY_FILLED"]
+                    # elif order_update["status"] == "Partial":
+                    #     new_state = CONSTANTS.ORDER_STATE["PARTIALLY_FILLED"]
+                    elif order_update["status"] == "Cancelled":
+                        new_state = CONSTANTS.ORDER_STATE["CANCELLED"]
                     update = OrderUpdate(
                         client_order_id=client_order_id,
                         exchange_order_id=str(order_update["orderClientId"]),

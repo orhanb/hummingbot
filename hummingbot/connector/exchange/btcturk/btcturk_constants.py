@@ -20,7 +20,7 @@ PUBLIC_TRADE_PATH = "/trades"
 ACCOUNTS_PATH_URL = "/users/balances"
 MY_TRADES_PATH_URL = "/users/transactions/trade"
 OPEN_ORDER_PATH_URL = "/openOrders?pairSymbol={}"
-ALL_ORDER_PATH_URL = "/allOrders"
+ALL_ORDER_PATH_URL = "/allOrders?pairSymbol={}&orderId={}"
 ORDER_PATH = "/order"
 ORDER_CANCEL_PATH = "/order?id={}"
 # GET_SINGLE_ORDER_PATH = "/order{}"
@@ -114,7 +114,7 @@ RATE_LIMITS = [
             LinkedLimitWeightPair(ORDERS, 1),
             LinkedLimitWeightPair(ORDERS_24HR, 1)]),
     RateLimit(
-        limit_id=OPEN_ORDER_PATH_URL,
+        limit_id=ALL_ORDER_PATH_URL,
         limit=MAX_REQUEST,
         time_interval=ONE_MINUTE,
         linked_limits=[
