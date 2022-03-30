@@ -754,7 +754,7 @@ class BtcturkExchange(ExchangeBase):
                     if filled:  # This already implies event type is 441
                         new_state = OrderState.PARTIALLY_FILLED
                         # TODO
-                        if math.isclose(Decimal(str(event_message[1]["amount"])), tracked_order.amount - tracked_order.executed_amount_base):
+                        if math.isclose(tracked_order.amount, tracked_order.executed_amount_base):
                             new_state = OrderState.FILLED
                     elif event_type == 451:
                         new_state = OrderState.OPEN
