@@ -31,6 +31,11 @@ def get_new_client_order_id(is_buy: bool, trading_pair: str) -> str:
     return f"{CONSTANTS.HBOT_ORDER_ID_PREFIX}-{side}{base_str}{quote_str}{client_instance_id}{get_tracking_nonce()}"
 
 
+def get_trade_id():
+    trade_id = hex(abs(hash(f"{socket.gethostname()}{os.getpid()}")))[2:6]
+    return trade_id
+
+
 def is_exchange_information_valid(exchange_info: Dict[str, Any]) -> bool:
     """
     Verifies if a trading pair is enabled to operate with based on its exchange information

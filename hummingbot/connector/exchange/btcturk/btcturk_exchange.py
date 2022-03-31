@@ -620,7 +620,7 @@ class BtcturkExchange(ExchangeBase):
                     self._update_balances(),
                     # self._update_order_fills_from_trades(),
                 )
-                # await self._update_order_status()
+                await self._update_order_status()
                 self._last_poll_timestamp = self.current_timestamp
             except asyncio.CancelledError:
                 raise
@@ -710,29 +710,19 @@ class BtcturkExchange(ExchangeBase):
         # user related messages to user event queue
         async for event_message in self._iter_user_event_queue():
             try:
-                # event_type is channel number for btcturk
                 event_type = event_message[0]
-                # Refer to https://github.com/binance-exchange/binance-official-api-docs/blob/master/user-data-stream.md
-                # As per the order update section in Binance the ID of the order being cancelled is under the "C" key
-                # https://binance-docs.github.io/apidocs/spot/en/#listen-key-isolated-margin
-                # User related channels in ws:
-                # 201 = BalanceUpdate, 441 = Order Executed, 451 = OrderReceived
-                # 452 = OrderDelete, 453 = OrderUpdate
-                filled = False
-                if event_type in [451, 452, 453]:
-                    client_order_id = event_message[1].get("newOrderClientId", None)
-                # Partial filled order issue needs to be solved
-                elif event_type == 441:
+
+                if event_type == 201:
+                    safe_ensure_future(self._update_balances())
+
+                if event_type == 441:
                     client_order_id = event_message[1].get("clientId", None)
                     tracked_order = self._order_tracker.fetch_order(client_order_id=client_order_id)
-                    # btcturk only provides exchange order id, not trade_id
-                    if Decimal(str(event_message[1]["amount"])) > 0:
-                        filled = True
                     if tracked_order is not None:
-                        # timestamp updated
                         quote_ccy = btcturk_utils.convert_from_exchange_trading_pair_to_quote_ccy(tracked_order.trading_pair)
+                        trade_id = btcturk_utils.get_trade_id()
                         trade_update = TradeUpdate(
-                            trade_id=str(event_message[1]["id"]),
+                            trade_id=trade_id,
                             client_order_id=client_order_id,
                             exchange_order_id=str(event_message[1]["id"]),
                             trading_pair=tracked_order.trading_pair,
@@ -744,26 +734,26 @@ class BtcturkExchange(ExchangeBase):
                             fill_timestamp=int(self.current_timestamp * 1e3),
                         )
                         self._order_tracker.process_trade_update(trade_update)
+
+                elif event_type in [451, 452, 453]:
+                    client_order_id = event_message[1].get("newOrderClientId")
+
                 else:
                     client_order_id = 0
-                tracked_order = self.in_flight_orders.get(client_order_id)
+                tracked_order = self.in_flight_orders.get(client_order_id, None)
                 if tracked_order is not None:
-                    # TODO
                     old_state = tracked_order.current_state
                     new_state = old_state
-                    if filled:  # This already implies event type is 441
-                        new_state = OrderState.PARTIALLY_FILLED
-                        # TODO
-                        if math.isclose(tracked_order.amount, tracked_order.executed_amount_base):
-                            new_state = OrderState.FILLED
-                    elif event_type == 451:
-                        new_state = OrderState.OPEN
+                    if event_type == 451:
+                        new_state = CONSTANTS.ORDER_STATE["NEW"]
                     elif event_type == 452:
-                        if old_state == OrderState.PENDING_CREATE:
-                            new_state = OrderState.FAILED
+                        new_state = CONSTANTS.ORDER_STATE["CANCELED"]
+                    elif event_type == 441:
+                        if math.isclose(tracked_order.amount, tracked_order.executed_amount_base):
+                            new_state = CONSTANTS.ORDER_STATE["FILLED"]
                         else:
-                            new_state = OrderState.CANCELLED
-                    elif event_type == 453:
+                            new_state = CONSTANTS.ORDER_STATE["PARTIALLY_FILLED"]
+                    else:
                         new_state = old_state
 
                     order_update = OrderUpdate(
@@ -774,6 +764,71 @@ class BtcturkExchange(ExchangeBase):
                         exchange_order_id=str(event_message[1]["id"]),
                     )
                     self._order_tracker.process_order_update(order_update=order_update)
+
+                # # event_type is channel number for btcturk
+                # event_type = event_message[0]
+                # # Refer to https://github.com/binance-exchange/binance-official-api-docs/blob/master/user-data-stream.md
+                # # As per the order update section in Binance the ID of the order being cancelled is under the "C" key
+                # # https://binance-docs.github.io/apidocs/spot/en/#listen-key-isolated-margin
+                # # User related channels in ws:
+                # # 201 = BalanceUpdate, 441 = Order Executed, 451 = OrderReceived
+                # # 452 = OrderDelete, 453 = OrderUpdate
+                # filled = False
+                # if event_type in [451, 452, 453]:
+                #     client_order_id = event_message[1].get("newOrderClientId", None)
+                # # Partial filled order issue needs to be solved
+                # elif event_type == 441:
+                #     client_order_id = event_message[1].get("clientId", None)
+                #     tracked_order = self._order_tracker.fetch_order(client_order_id=client_order_id)
+                #     # btcturk only provides exchange order id, not trade_id
+                #     if Decimal(str(event_message[1]["amount"])) > 0:
+                #         filled = True
+                #     if tracked_order is not None:
+                #         quote_ccy = btcturk_utils.convert_from_exchange_trading_pair_to_quote_ccy(tracked_order.trading_pair)
+                #         trade_id = btcturk_utils.get_trade_id()
+                #         trade_update = TradeUpdate(
+                #             trade_id=trade_id,
+                #             client_order_id=client_order_id,
+                #             exchange_order_id=str(event_message[1]["id"]),
+                #             trading_pair=tracked_order.trading_pair,
+                #             fee_asset=quote_ccy,
+                #             fee_paid=Decimal(str(event_message[1]["amount"])) * Decimal(str(event_message[1]["price"])) * Decimal(btcturk_utils.DEFAULT_FEES[0]),
+                #             fill_base_amount=Decimal(str(event_message[1]["amount"])),
+                #             fill_quote_amount=Decimal(str(event_message[1]["amount"])) * Decimal(str(event_message[1]["price"])),
+                #             fill_price=Decimal(str(event_message[1]["price"])),
+                #             fill_timestamp=int(self.current_timestamp * 1e3),
+                #         )
+                #         self._order_tracker.process_trade_update(trade_update)
+                # else:
+                #     client_order_id = 0
+                # tracked_order = self.in_flight_orders.get(client_order_id)
+                # if tracked_order is not None:
+                #     # TODO
+                #     old_state = tracked_order.current_state
+                #     new_state = old_state
+                #     if filled:  # This already implies event type is 441
+                #         new_state = OrderState.PARTIALLY_FILLED
+                #         # TODO
+                #         if math.isclose(tracked_order.amount, tracked_order.executed_amount_base):
+                #             new_state = OrderState.FILLED
+                #     elif event_type == 451:
+                #         new_state = OrderState.OPEN
+                #     elif event_type == 452:
+                #         if old_state == OrderState.PENDING_CREATE:
+                #             new_state = OrderState.FAILED
+                #         else:
+                #             new_state = OrderState.CANCELLED
+                #     elif event_type == 453:
+                #         new_state = old_state
+
+                #     order_update = OrderUpdate(
+                #         trading_pair=tracked_order.trading_pair,
+                #         update_timestamp=int(self.current_timestamp * 1e3),
+                #         new_state=new_state,
+                #         client_order_id=client_order_id,
+                #         exchange_order_id=str(event_message[1]["id"]),
+                #     )
+                #     self._order_tracker.process_order_update(order_update=order_update)
                 # btcturk not providing any details about 201-BalanceUpdate message
                 # elif event_type == "outboundAccountPosition":
                 #     balances = event_message["B"]
@@ -822,17 +877,16 @@ class BtcturkExchange(ExchangeBase):
                     throttler=self._throttler,
                 )
                 base_symbol = btcturk_utils.convert_from_exchange_trading_pair_to_base_quote(symbol)
-                params = {
-                    "symbol": base_symbol,
-                }
-                if self._last_poll_timestamp > 0:
-                    params["startDate"] = query_time
+                startDate = query_time
+
+                # if self._last_poll_timestamp > 0:
+                #     startDate = query_time
                 tasks.append(
                     self._api_request(
                         method=RESTMethod.GET,
-                        path_url=CONSTANTS.MY_TRADES_PATH_URL,
-                        params=params,
+                        path_url=CONSTANTS.MY_TRADES_PATH_URL.format(base_symbol, startDate),
                         is_auth_required=True,
+                        limit_path_url=CONSTANTS.MY_TRADES_PATH_URL
                     )
                 )
 
@@ -854,39 +908,39 @@ class BtcturkExchange(ExchangeBase):
                         # This is a fill for a tracked order
                         tracked_order = order_by_exchange_id_map[exchange_order_id]
                         trade_update = TradeUpdate(
-                            # trade_id=str(trade["id"]),
+                            trade_id=tracked_order.trade_id,
                             client_order_id=tracked_order.client_order_id,
                             exchange_order_id=exchange_order_id,
                             trading_pair=trading_pair,
                             fee_asset=trade["denominatorSymbol"],
-                            fee_paid=abs(Decimal(trade["fee"]) + Decimal(trade["tax"])),
-                            fill_base_amount=Decimal(trade["amount"]),
+                            fee_paid=abs(Decimal(str(trade["fee"])) + Decimal(str(trade["tax"]))),
+                            fill_base_amount=Decimal(abs(int(str(trade["amount"])))),
                             # fill_quote_amount=Decimal(trade["quoteQty"]),
-                            fill_price=Decimal(trade["price"]),
+                            fill_price=Decimal(str(trade["price"])),
                             fill_timestamp=int(trade["timestamp"]),
                         )
                         self._order_tracker.process_trade_update(trade_update)
-                    elif self.is_confirmed_new_order_filled_event(str(trade["id"]), exchange_order_id, trading_pair):
+                    elif self.is_confirmed_new_order_filled_event(tracked_order.trade_id, exchange_order_id, trading_pair):
                         # This is a fill of an order registered in the DB but not tracked any more
                         self._current_trade_fills.add(
                             TradeFillOrderDetails(
-                                market=self.display_name, exchange_trade_id=str(trade["id"]), symbol=trading_pair
+                                market=self.display_name, exchange_trade_id=tracked_order.trade_id, symbol=trading_pair
                             )
                         )
                         self.trigger_event(
                             MarketEvent.OrderFilled,
                             OrderFilledEvent(
-                                timestamp=float(trade["time"]) * 1e-3,
+                                timestamp=float(trade["timestamp"]) * 1e-3,
                                 order_id=self._exchange_order_ids.get(str(trade["orderId"]), None),
                                 trading_pair=trading_pair,
-                                trade_type=TradeType.SELL if trade["data"]["orderType"] == "sell" else TradeType.BUY,
+                                trade_type=TradeType.SELL if str(trade["data"]["orderType"]) == "sell" else TradeType.BUY,
                                 # order_type=OrderType.LIMIT_MAKER if trade["isMaker"] else OrderType.LIMIT,
                                 # price=Decimal(trade["price"]),
-                                amount=Decimal(trade["amount"]),
+                                amount=Decimal(abs(int(str(trade["amount"])))),
                                 trade_fee=DeductedFromReturnsTradeFee(
-                                    flat_fees=[TokenAmount(fee_asset=trade["denominatorSymbol"]), abs(Decimal(trade["fee"]) + Decimal(trade["tax"]))]
+                                    flat_fees=[TokenAmount(fee_asset=trade["denominatorSymbol"]), abs(Decimal(str(trade["fee"])) + Decimal(str(trade["tax"])))]
                                 ),
-                                exchange_trade_id=str(trade["id"]),
+                                exchange_trade_id=tracked_order.trade_id,
                             ),
                         )
                         self.logger().info(f"Recreating missing trade in TradeFill: {trade}")
@@ -905,7 +959,7 @@ class BtcturkExchange(ExchangeBase):
             tasks = [
                 self._api_request(
                     method=RESTMethod.GET,
-                    path_url=CONSTANTS.ALL_ORDER_PATH_URL.format(o.trading_pair, o.exchange_order_id),
+                    path_url=CONSTANTS.GET_SINGLE_ORDER_PATH.format(o.exchange_order_id),
                     limit_path_url=CONSTANTS.ORDER_PATH,
                     is_auth_required=True,
                 )
@@ -913,14 +967,11 @@ class BtcturkExchange(ExchangeBase):
             ]
             self.logger().debug(f"Polling for order status updates of {len(tasks)} orders.")
             results = await safe_gather(*tasks, return_exceptions=True)
-            # TODO need to manipulate results
             updated_results = []
             for i in results:
-                for j in i["data"]:
-                    if j is None:
-                        break
-                    else:
-                        updated_results.append(j[-1])
+                j = i["data"]
+                if j is not None:
+                    updated_results.append(j)
 
             for order_update, tracked_order in zip(updated_results, tracked_orders):
                 client_order_id = tracked_order.client_order_id
@@ -955,17 +1006,17 @@ class BtcturkExchange(ExchangeBase):
                 else:
                     # Update order execution status
                     # new_state = CONSTANTS.ORDER_STATE[order_update["status"]]
-                    if order_update["status"] == "Untouched":
+                    if str(order_update["status"]) == "Untouched":
                         new_state = CONSTANTS.ORDER_STATE["NEW"]
-                    # elif order_update["status"] == "Partial":
-                    #     new_state = CONSTANTS.ORDER_STATE["PARTIALLY_FILLED"]
-                    elif order_update["status"] == "Cancelled":
-                        new_state = CONSTANTS.ORDER_STATE["CANCELLED"]
+                    elif str(order_update["status"]) == "Closed":
+                        new_state = CONSTANTS.ORDER_STATE["FILLED"]
+                    elif order_update["status"] == "Canceled":
+                        new_state = CONSTANTS.ORDER_STATE["CANCELED"]
                     update = OrderUpdate(
                         client_order_id=client_order_id,
                         exchange_order_id=str(order_update["orderClientId"]),
                         trading_pair=tracked_order.trading_pair,
-                        update_timestamp=int(order_update["updateTime"]),
+                        update_timestamp=int(str(order_update["updateTime"])),
                         new_state=new_state,
                     )
                     self._order_tracker.process_order_update(update)

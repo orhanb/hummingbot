@@ -18,12 +18,12 @@ PUBLIC_TRADE_PATH = "/trades"
 # Private API endpoints
 
 ACCOUNTS_PATH_URL = "/users/balances"
-MY_TRADES_PATH_URL = "/users/transactions/trade"
+MY_TRADES_PATH_URL = "/users/transactions/trade?symbol={}&startDate={}"
 OPEN_ORDER_PATH_URL = "/openOrders?pairSymbol={}"
 ALL_ORDER_PATH_URL = "/allOrders?pairSymbol={}&orderId={}"
 ORDER_PATH = "/order"
 ORDER_CANCEL_PATH = "/order?id={}"
-# GET_SINGLE_ORDER_PATH = "/order{}"
+GET_SINGLE_ORDER_PATH = "/order/{}"
 
 WS_HEARTBEAT_TIME_INTERVAL = 30
 
@@ -49,7 +49,7 @@ ORDER_STATE = {
     "PENDING_CANCEL": OrderState.OPEN,
     "CANCELED": OrderState.CANCELLED,  # 452 order delete
     "REJECTED": OrderState.FAILED,  # 452, need to differentiate with cancelled
-    # "EXPIRED": OrderState.FAILED, # probably 452
+    "EXPIRED": OrderState.FAILED,  # probably 452
 }
 
 DIFF_EVENT_TYPE = "obdiff"
