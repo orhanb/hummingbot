@@ -969,9 +969,11 @@ class BtcturkExchange(ExchangeBase):
             results = await safe_gather(*tasks, return_exceptions=True)
             updated_results = []
             for i in results:
-                j = i.get("data", None)
-                if j is not None:
+                if i.get("data", None):
+                    j = i.get("data")
                     updated_results.append(j)
+                else:
+                    continue
 
             for order_update, tracked_order in zip(updated_results, tracked_orders):
                 client_order_id = tracked_order.client_order_id
