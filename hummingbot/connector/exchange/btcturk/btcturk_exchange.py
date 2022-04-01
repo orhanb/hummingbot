@@ -969,7 +969,7 @@ class BtcturkExchange(ExchangeBase):
             results = await safe_gather(*tasks, return_exceptions=True)
             updated_results = []
             for i in results:
-                j = i["data"]
+                j = i.get("data", None)
                 if j is not None:
                     updated_results.append(j)
 
