@@ -88,7 +88,9 @@ class BtcturkOrderBookTracker(OrderBookTracker):
                 message_queue: asyncio.Queue = self._tracking_message_queues[trading_pair]
                 # Check the order book's initial update ID. If it's larger, don't bother.
                 order_book: OrderBook = self._order_books[trading_pair]
-                if order_book.snapshot_uid > ob_message.update_id:
+
+                if order_book.last_diff_uid > ob_message.update_id:
+                    self.logger().error(f"last_diff_uid {order_book.last_diff_uid} , diff id: {ob_message.update_id}")
                     messages_rejected += 1
                     continue
                 await message_queue.put(ob_message)
